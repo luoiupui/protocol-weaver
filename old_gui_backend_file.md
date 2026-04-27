@@ -1,0 +1,4087 @@
+# Old GUI + Backend File Snapshot
+
+> **Frozen baseline** — captured automatically as a reference checkpoint.
+> Use this file as evidence to compare against future modifications, and as
+> a source of truth when merging current GUI/backend elements with later
+> versions.
+
+- **Captured (UTC):** 2026-04-27T13:32:56Z
+- **Git commit:** `51fa585`
+- **Stack:** React 18 + Vite 5 + TypeScript 5 + Tailwind CSS v3 + shadcn/ui
+- **Backend:** none yet (Lovable Cloud not enabled at capture time — purely
+  client-side app; "backend files" below refers to data/sim layers, config,
+  and infra files in this repo)
+
+---
+
+## 1. Inventory
+
+### 1.1 GUI — Pages
+- `src/pages/Index.tsx` — Loomwire landing page (hero + bento grid)
+- `src/pages/NotFound.tsx` — 404 route
+
+### 1.2 GUI — App shell
+- `src/App.tsx` — Router + global providers (React Query, Tooltip, Toasters)
+- `src/main.tsx` — Vite entry
+- `src/App.css` — global resets
+- `src/index.css` — design tokens (HSL), gradients, animations
+- `index.html` — document shell + meta
+
+### 1.3 GUI — Loomwire components (`src/components/loomwire/`)
+- `Nav.tsx`
+- `WeaveCanvas.tsx` — animated SVG fusion hero
+- `PayloadFusion.tsx` — raw → unified payload normalizer
+- `ProtocolMatrix.tsx` — adapter table
+- `StatGrid.tsx` — KPI bento tiles
+- `Ticker.tsx` — live data ticker
+- `Footer.tsx`
+
+### 1.4 GUI — Analytics / report components (`src/components/`)
+- `LatencyChart.tsx` — recharts P50/P95/P99 bars
+- `ThroughputChart.tsx` — stacked area, msg/tick
+- `ResourceChart.tsx` — CPU + memory line chart
+- `ConfusionMatrix.tsx`
+- `ClassificationReport.tsx`
+- `ComparisonTable.tsx`
+- `DataPipelineFlow.tsx`
+- `TechnicalReport.tsx`
+- `InfoTooltip.tsx`
+- `NavLink.tsx`
+
+### 1.5 GUI — Hooks
+- `src/hooks/use-mobile.tsx`
+- `src/hooks/use-toast.ts`
+
+### 1.6 GUI — shadcn/ui primitives (`src/components/ui/`)
+Standard shadcn set — listed for completeness, source not duplicated below
+to keep this file readable. Inventory only:
+
+```
+- accordion.tsx
+- alert-dialog.tsx
+- alert.tsx
+- aspect-ratio.tsx
+- avatar.tsx
+- badge.tsx
+- breadcrumb.tsx
+- button.tsx
+- calendar.tsx
+- card.tsx
+- carousel.tsx
+- chart.tsx
+- checkbox.tsx
+- collapsible.tsx
+- command.tsx
+- context-menu.tsx
+- dialog.tsx
+- drawer.tsx
+- dropdown-menu.tsx
+- form.tsx
+- hover-card.tsx
+- input-otp.tsx
+- input.tsx
+- label.tsx
+- menubar.tsx
+- navigation-menu.tsx
+- pagination.tsx
+- popover.tsx
+- progress.tsx
+- radio-group.tsx
+- resizable.tsx
+- scroll-area.tsx
+- select.tsx
+- separator.tsx
+- sheet.tsx
+- sidebar.tsx
+- skeleton.tsx
+- slider.tsx
+- sonner.tsx
+- switch.tsx
+- table.tsx
+- tabs.tsx
+- textarea.tsx
+- toast.tsx
+- toaster.tsx
+- toggle-group.tsx
+- toggle.tsx
+- tooltip.tsx
+- use-toast.ts
+```
+
+### 1.7 Backend / data layer
+- `src/lib/utils.ts` — `cn()` class merger
+- (no `src/lib/simulation.ts` present at snapshot time, although chart
+  components import its types — flagged as a gap to resolve in next merge)
+- (no `supabase/` directory — Lovable Cloud not enabled)
+- (no edge functions, no migrations)
+
+### 1.8 Public assets
+- `public/placeholder.svg`
+- `public/robots.txt`
+- `public/thesis-rewrite-smart-factory.md`
+
+### 1.9 Config / infra
+- `package.json`, `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json`
+- `vite.config.ts`, `vitest.config.ts`
+- `tailwind.config.ts`, `postcss.config.js`
+- `eslint.config.js`, `components.json`
+
+---
+
+## 2. Full source — GUI files
+
+### `index.html` (27 lines)
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Loomwire — IoT Protocol Fusion Weaver</title>
+    <meta name="description" content="Loomwire weaves MQTT, CoAP, Zigbee, Modbus, and LoRaWAN into a single coherent telemetry fabric. One stream. Every protocol." />
+    <meta name="author" content="Loomwire" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Work+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+    <meta property="og:title" content="Loomwire — IoT Protocol Fusion Weaver" />
+    <meta property="og:description" content="Weave MQTT, CoAP, Zigbee, Modbus, and LoRaWAN into one coherent telemetry fabric." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
+```
+
+### `src/main.tsx` (5 lines)
+
+```tsx
+import { createRoot } from "react-dom/client";
+import App from "./App.tsx";
+import "./index.css";
+
+createRoot(document.getElementById("root")!).render(<App />);
+
+```
+
+### `src/App.tsx` (27 lines)
+
+```tsx
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import Index from "./pages/Index.tsx";
+import NotFound from "./pages/NotFound.tsx";
+
+const queryClient = new QueryClient();
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
+
+export default App;
+
+```
+
+### `src/App.css` (42 lines)
+
+```css
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+```
+
+### `src/index.css` (202 lines)
+
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Loomwire — IoT Protocol Fusion Weaver design system
+   All colors HSL. Tokens only — no ad-hoc colors in components. */
+
+@layer base {
+  :root {
+    /* Deep industrial canvas */
+    --background: 215 60% 6%;
+    --foreground: 150 20% 92%;
+
+    --surface: 215 50% 9%;
+    --surface-2: 215 45% 12%;
+    --surface-3: 215 40% 16%;
+
+    --card: 215 50% 9%;
+    --card-foreground: 150 20% 92%;
+
+    --popover: 215 55% 8%;
+    --popover-foreground: 150 20% 92%;
+
+    /* Signal mint */
+    --primary: 162 73% 51%;
+    --primary-foreground: 215 60% 6%;
+    --primary-glow: 150 100% 73%;
+
+    /* Forest substrate */
+    --secondary: 154 55% 18%;
+    --secondary-foreground: 150 20% 92%;
+
+    --muted: 215 35% 14%;
+    --muted-foreground: 165 15% 65%;
+
+    --accent: 150 100% 73%;
+    --accent-foreground: 215 60% 6%;
+
+    --warn: 38 95% 60%;
+    --danger: 0 84% 65%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 150 20% 95%;
+
+    --border: 165 30% 18%;
+    --input: 215 40% 14%;
+    --ring: 162 73% 51%;
+
+    --radius: 0.25rem;
+
+    /* Gradients */
+    --gradient-weave: linear-gradient(135deg, hsl(162 73% 51%) 0%, hsl(150 100% 73%) 50%, hsl(170 80% 60%) 100%);
+    --gradient-deep: radial-gradient(ellipse at top, hsl(170 80% 20% / 0.35), transparent 60%),
+                     radial-gradient(ellipse at bottom right, hsl(162 73% 25% / 0.25), transparent 55%),
+                     hsl(var(--background));
+    --gradient-grid-fade: linear-gradient(180deg, transparent, hsl(var(--background)) 90%);
+
+    /* Shadows / glows */
+    --shadow-glow: 0 0 0 1px hsl(var(--primary) / 0.25), 0 8px 40px -12px hsl(var(--primary) / 0.45);
+    --shadow-card: 0 1px 0 hsl(165 30% 25% / 0.4) inset, 0 30px 60px -30px hsl(0 0% 0% / 0.6);
+    --shadow-edge: inset 0 1px 0 hsl(165 40% 30% / 0.3);
+
+    /* Motion */
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+    --sidebar-background: 215 55% 7%;
+    --sidebar-foreground: 150 20% 88%;
+    --sidebar-primary: 162 73% 51%;
+    --sidebar-primary-foreground: 215 60% 6%;
+    --sidebar-accent: 215 40% 14%;
+    --sidebar-accent-foreground: 150 20% 92%;
+    --sidebar-border: 165 30% 18%;
+    --sidebar-ring: 162 73% 51%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-family: 'Work Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    background: var(--gradient-deep);
+    min-height: 100vh;
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.3);
+    color: hsl(var(--primary-glow));
+  }
+}
+
+@layer components {
+  .font-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+  .grid-bg {
+    background-image:
+      linear-gradient(hsl(165 30% 18% / 0.5) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(165 30% 18% / 0.5) 1px, transparent 1px);
+    background-size: 56px 56px;
+    background-position: -1px -1px;
+  }
+
+  .grid-bg-fade {
+    -webkit-mask-image: radial-gradient(ellipse at 50% 30%, black 30%, transparent 75%);
+            mask-image: radial-gradient(ellipse at 50% 30%, black 30%, transparent 75%);
+  }
+
+  .text-weave {
+    background: var(--gradient-weave);
+    -webkit-background-clip: text;
+            background-clip: text;
+    color: transparent;
+  }
+
+  .panel {
+    background: linear-gradient(180deg, hsl(var(--surface)) 0%, hsl(var(--surface-2)) 100%);
+    border: 1px solid hsl(var(--border));
+    box-shadow: var(--shadow-card), var(--shadow-edge);
+  }
+
+  .panel-glow {
+    background: linear-gradient(180deg, hsl(var(--surface)) 0%, hsl(var(--surface-2)) 100%);
+    border: 1px solid hsl(var(--primary) / 0.35);
+    box-shadow: var(--shadow-glow);
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-sm border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em];
+    border-color: hsl(var(--border));
+    background: hsl(var(--surface-2));
+    color: hsl(var(--muted-foreground));
+  }
+
+  .chip-live {
+    color: hsl(var(--primary));
+    border-color: hsl(var(--primary) / 0.4);
+    background: hsl(var(--primary) / 0.08);
+  }
+
+  .scanline::before {
+    content: "";
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      hsl(var(--primary) / 0.03) 0,
+      hsl(var(--primary) / 0.03) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    pointer-events: none;
+    mix-blend-mode: screen;
+  }
+
+  .dot-pulse::after {
+    content: "";
+    position: absolute; inset: -4px;
+    border-radius: 9999px;
+    border: 1px solid hsl(var(--primary) / 0.6);
+    animation: dot-pulse 1.8s var(--ease-out-expo) infinite;
+  }
+}
+
+@layer utilities {
+  .animate-flow { animation: flow 3.4s linear infinite; }
+  .animate-flow-slow { animation: flow 6s linear infinite; }
+  .animate-flow-fast { animation: flow 2s linear infinite; }
+  .animate-pulse-soft { animation: pulse-soft 2.4s ease-in-out infinite; }
+  .animate-tick { animation: tick 4s steps(40) infinite; }
+  .animate-rise { animation: rise 0.9s var(--ease-out-expo) both; }
+  .animate-weave-rotate { animation: weave-rotate 22s linear infinite; }
+}
+
+@keyframes flow {
+  to { stroke-dashoffset: -200; }
+}
+@keyframes pulse-soft {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+@keyframes dot-pulse {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+@keyframes tick {
+  to { transform: translateX(-50%); }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes weave-rotate {
+  to { transform: rotate(360deg); }
+}
+
+```
+
+## 3. Full source — Pages
+
+### `src/pages/Index.tsx` (197 lines)
+
+```tsx
+import { Nav } from "@/components/loomwire/Nav";
+import { WeaveCanvas } from "@/components/loomwire/WeaveCanvas";
+import { Ticker } from "@/components/loomwire/Ticker";
+import { ProtocolMatrix } from "@/components/loomwire/ProtocolMatrix";
+import { PayloadFusion } from "@/components/loomwire/PayloadFusion";
+import { StatGrid } from "@/components/loomwire/StatGrid";
+import { Footer } from "@/components/loomwire/Footer";
+
+const Index = () => {
+  return (
+    <main className="min-h-screen">
+      <Nav />
+
+      {/* HERO */}
+      <section className="relative overflow-hidden">
+        <div className="grid-bg grid-bg-fade absolute inset-0 -z-10" />
+        <div className="mx-auto grid max-w-7xl gap-10 px-6 pt-16 pb-12 md:grid-cols-[1.05fr_1fr] md:pt-24 md:pb-20">
+          <div className="animate-rise">
+            <div className="flex items-center gap-2">
+              <span className="chip chip-live">
+                <span className="relative inline-block h-1.5 w-1.5 rounded-full bg-primary">
+                  <span className="dot-pulse" />
+                </span>
+                fusion mesh · online
+              </span>
+              <span className="chip">v1.4 · open weave</span>
+            </div>
+
+            <h1 className="mt-6 font-mono text-5xl font-extrabold leading-[1.02] tracking-[-0.02em] md:text-7xl">
+              Weave every
+              <br />
+              IoT protocol
+              <br />
+              into <span className="text-weave">one stream.</span>
+            </h1>
+
+            <p className="mt-6 max-w-xl text-base text-muted-foreground md:text-lg">
+              Loomwire is a protocol fusion engine that merges MQTT, CoAP, Zigbee, Modbus,
+              LoRaWAN, OPC-UA, BLE and Matter into a single, normalized telemetry fabric —
+              with sub-20ms p99 and zero glue code.
+            </p>
+
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <a
+                href="#cta"
+                className="group relative inline-flex items-center gap-2 rounded-sm bg-primary px-5 py-3 font-mono text-xs font-bold uppercase tracking-[0.18em] text-primary-foreground transition-transform hover:-translate-y-0.5"
+                style={{ boxShadow: "var(--shadow-glow)" }}
+              >
+                Start weaving
+                <span className="transition-transform group-hover:translate-x-0.5">→</span>
+              </a>
+              <a
+                href="#loom"
+                className="inline-flex items-center gap-2 rounded-sm border border-border bg-surface-2 px-5 py-3 font-mono text-xs font-bold uppercase tracking-[0.18em] text-foreground transition-colors hover:border-primary/50 hover:text-primary"
+              >
+                See the loom
+              </a>
+            </div>
+
+            <dl className="mt-12 grid max-w-md grid-cols-3 gap-6 border-t border-border pt-6">
+              {[
+                ["24", "adapters"],
+                ["1.4M", "msg/sec"],
+                ["18ms", "p99"],
+              ].map(([v, k]) => (
+                <div key={k}>
+                  <dt className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                    {k}
+                  </dt>
+                  <dd className="mt-1 font-mono text-2xl font-bold text-foreground">{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+
+          {/* Hero loom panel */}
+          <div className="relative animate-rise" style={{ animationDelay: "0.15s" }}>
+            <div className="panel-glow scanline relative overflow-hidden rounded-sm">
+              <div className="flex items-center justify-between border-b border-border px-5 py-3">
+                <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                  <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-primary" />
+                  loom · live weave
+                </div>
+                <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                  <span>region eu-2</span>
+                  <span className="text-primary">●</span>
+                </div>
+              </div>
+              <WeaveCanvas />
+              <div className="grid grid-cols-3 gap-px border-t border-border bg-border">
+                {[
+                  ["in",  "1,204k/s"],
+                  ["out", "1,201k/s"],
+                  ["drop", "0.002%"],
+                ].map(([k, v]) => (
+                  <div key={k} className="bg-surface px-4 py-3">
+                    <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                      {k}
+                    </div>
+                    <div className="mt-1 font-mono text-sm font-bold text-foreground">{v}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Floating coordinate */}
+            <div className="absolute -left-3 -top-3 hidden font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground md:block">
+              52.37°N · 4.89°E
+            </div>
+          </div>
+        </div>
+
+        <Ticker />
+      </section>
+
+      {/* PROTOCOLS */}
+      <section id="protocols" className="mx-auto max-w-7xl px-6 py-20">
+        <div className="mb-10 flex items-end justify-between">
+          <div>
+            <span className="chip">/02 — adapters</span>
+            <h2 className="mt-4 font-mono text-3xl font-bold tracking-tight md:text-5xl">
+              Every protocol, <span className="text-weave">spoken natively.</span>
+            </h2>
+          </div>
+          <p className="hidden max-w-sm text-sm text-muted-foreground md:block">
+            Each adapter is a first-class citizen — not a translator on top of a translator.
+            Drop one in and the fusion engine reshapes the fabric automatically.
+          </p>
+        </div>
+        <ProtocolMatrix />
+      </section>
+
+      {/* FUSION */}
+      <section id="loom" className="mx-auto max-w-7xl px-6 pb-20">
+        <div className="mb-10 grid gap-6 md:grid-cols-[2fr_1fr]">
+          <div>
+            <span className="chip">/03 — fusion engine</span>
+            <h2 className="mt-4 font-mono text-3xl font-bold tracking-tight md:text-5xl">
+              From <span className="text-weave">noise</span> to a single,
+              <br />
+              normalized signal.
+            </h2>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            The weaver applies a deterministic schema, deduplicates across overlapping radios,
+            and emits one canonical event per physical phenomenon — regardless of how many
+            devices reported it or what protocol they used.
+          </p>
+        </div>
+        <PayloadFusion />
+      </section>
+
+      {/* STATS */}
+      <section className="mx-auto max-w-7xl px-6 pb-20">
+        <StatGrid />
+      </section>
+
+      {/* CTA */}
+      <section id="cta" className="relative overflow-hidden border-y border-border">
+        <div className="grid-bg grid-bg-fade absolute inset-0 -z-10 opacity-60" />
+        <div className="mx-auto max-w-5xl px-6 py-24 text-center">
+          <span className="chip chip-live">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+            free during beta
+          </span>
+          <h2 className="mt-6 font-mono text-4xl font-extrabold leading-[1.05] tracking-tight md:text-6xl">
+            Stop translating. <br />
+            <span className="text-weave">Start weaving.</span>
+          </h2>
+          <p className="mx-auto mt-5 max-w-xl text-muted-foreground">
+            Connect a gateway in under three minutes. Receive a unified telemetry stream
+            you can query, route, and persist anywhere.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <a
+              href="#"
+              className="rounded-sm bg-primary px-6 py-3 font-mono text-xs font-bold uppercase tracking-[0.18em] text-primary-foreground transition-transform hover:-translate-y-0.5"
+              style={{ boxShadow: "var(--shadow-glow)" }}
+            >
+              Open the loom →
+            </a>
+            <a
+              href="#"
+              className="rounded-sm border border-border bg-surface-2 px-6 py-3 font-mono text-xs font-bold uppercase tracking-[0.18em] text-foreground transition-colors hover:border-primary/50 hover:text-primary"
+            >
+              Talk to engineering
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <Footer />
+    </main>
+  );
+};
+
+export default Index;
+
+```
+
+### `src/pages/NotFound.tsx` (24 lines)
+
+```tsx
+import { useLocation } from "react-router-dom";
+import { useEffect } from "react";
+
+const NotFound = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    console.error("404 Error: User attempted to access non-existent route:", location.pathname);
+  }, [location.pathname]);
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-muted">
+      <div className="text-center">
+        <h1 className="mb-4 text-4xl font-bold">404</h1>
+        <p className="mb-4 text-xl text-muted-foreground">Oops! Page not found</p>
+        <a href="/" className="text-primary underline hover:text-primary/90">
+          Return to Home
+        </a>
+      </div>
+    </div>
+  );
+};
+
+export default NotFound;
+
+```
+
+## 4. Full source — Loomwire components
+
+### `src/components/loomwire/Footer.tsx` (40 lines)
+
+```tsx
+export const Footer = () => (
+  <footer className="border-t border-border bg-surface/40">
+    <div className="mx-auto grid max-w-7xl grid-cols-2 gap-10 px-6 py-12 md:grid-cols-4">
+      <div className="col-span-2">
+        <div className="font-mono text-sm font-bold tracking-[0.18em]">
+          LOOM<span className="text-primary">·</span>WIRE
+        </div>
+        <p className="mt-3 max-w-sm text-sm text-muted-foreground">
+          The IoT protocol fusion weaver. One coherent telemetry fabric for every device,
+          every gateway, every standard.
+        </p>
+      </div>
+      {[
+        { h: "Product", l: ["Protocols", "Fusion engine", "Edge agent", "Pricing"] },
+        { h: "Resources", l: ["Docs", "Changelog", "Status", "Security"] },
+      ].map((c) => (
+        <div key={c.h}>
+          <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            {c.h}
+          </div>
+          <ul className="mt-3 space-y-2">
+            {c.l.map((i) => (
+              <li key={i}>
+                <a href="#" className="text-sm text-foreground/80 transition-colors hover:text-primary">
+                  {i}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+    <div className="border-t border-border/60">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+        <span>© 2026 Loomwire Systems</span>
+        <span>built on the open weave protocol</span>
+      </div>
+    </div>
+  </footer>
+);
+
+```
+
+### `src/components/loomwire/Nav.tsx` (42 lines)
+
+```tsx
+export const Nav = () => {
+  return (
+    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-md">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+        <a href="#" className="flex items-center gap-2.5">
+          <div className="relative grid h-7 w-7 place-items-center rounded-sm border border-primary/40 bg-surface-2">
+            <div className="absolute inset-1 rounded-[2px] bg-gradient-to-br from-primary to-primary-glow opacity-90" />
+            <div className="relative h-2 w-2 rounded-full bg-background" />
+          </div>
+          <div className="font-mono text-sm font-bold tracking-[0.18em]">
+            LOOM<span className="text-primary">·</span>WIRE
+          </div>
+        </a>
+        <nav className="hidden items-center gap-8 md:flex">
+          {["Protocols", "Loom", "Pricing", "Docs"].map((l) => (
+            <a
+              key={l}
+              href={`#${l.toLowerCase()}`}
+              className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {l}
+            </a>
+          ))}
+        </nav>
+        <div className="flex items-center gap-3">
+          <span className="chip chip-live hidden sm:inline-flex">
+            <span className="relative inline-block h-1.5 w-1.5 rounded-full bg-primary">
+              <span className="dot-pulse" />
+            </span>
+            mesh: 1,402 nodes
+          </span>
+          <a
+            href="#cta"
+            className="rounded-sm border border-primary/50 bg-primary/10 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+          >
+            Open loom →
+          </a>
+        </div>
+      </div>
+    </header>
+  );
+};
+
+```
+
+### `src/components/loomwire/PayloadFusion.tsx` (64 lines)
+
+```tsx
+export const PayloadFusion = () => {
+  return (
+    <div className="panel relative overflow-hidden rounded-sm">
+      <div className="flex items-center justify-between border-b border-border px-5 py-3">
+        <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+          <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-primary" />
+          fusion · payload normalizer
+        </div>
+        <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-primary">v1.4.2</span>
+      </div>
+
+      <div className="grid grid-cols-1 gap-px bg-border md:grid-cols-[1fr_auto_1fr]">
+        {/* Inputs */}
+        <div className="bg-surface p-5">
+          <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            inputs · 3 raw frames
+          </div>
+          <pre className="overflow-x-auto rounded-sm border border-border bg-background/60 p-3 font-mono text-[11px] leading-relaxed text-muted-foreground">
+{`MQTT   /farm/north/soil/8a
+       { "t": 1714, "v": 0.42, "u": "vwc" }
+
+CoAP   coap://gw/env/co2
+       2.05 → 412 ppm
+
+Modbus slave=12 holding[3..6]
+       [22, 64, 1, 0]`}
+          </pre>
+        </div>
+
+        {/* Arrow */}
+        <div className="hidden items-center justify-center bg-surface px-4 md:flex">
+          <div className="flex flex-col items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-primary">
+            <span>weave</span>
+            <span className="text-2xl leading-none">→</span>
+            <span>fuse</span>
+          </div>
+        </div>
+
+        {/* Output */}
+        <div className="bg-surface p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              fused stream
+            </span>
+            <span className="chip chip-live">unified://</span>
+          </div>
+          <pre className="overflow-x-auto rounded-sm border border-primary/30 bg-primary/5 p-3 font-mono text-[11px] leading-relaxed text-foreground">
+{`{
+  "site": "farm.north",
+  "ts":   "2025-04-27T14:02:11Z",
+  "metrics": {
+    "soil.vwc":   0.42,
+    "air.co2":    412,
+    "pump.state": "on",
+    "tank.level": 64
+  },
+  "_sources": ["mqtt","coap","modbus"]
+}`}
+          </pre>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+```
+
+### `src/components/loomwire/ProtocolMatrix.tsx` (61 lines)
+
+```tsx
+type Row = {
+  name: string;
+  transport: string;
+  topology: string;
+  latency: string;
+  status: "live" | "beta";
+};
+
+const ROWS: Row[] = [
+  { name: "MQTT 5",     transport: "TCP/TLS",  topology: "broker",   latency: "12ms", status: "live" },
+  { name: "CoAP",       transport: "UDP",      topology: "rest",     latency: "08ms", status: "live" },
+  { name: "Zigbee 3.0", transport: "802.15.4", topology: "mesh",     latency: "44ms", status: "live" },
+  { name: "Modbus",     transport: "RTU/TCP",  topology: "polling",  latency: "20ms", status: "live" },
+  { name: "LoRaWAN",    transport: "sub-GHz",  topology: "star",     latency: "1.2s", status: "live" },
+  { name: "OPC-UA",     transport: "TCP",      topology: "client",   latency: "15ms", status: "beta" },
+  { name: "BLE Mesh",   transport: "2.4GHz",   topology: "mesh",     latency: "30ms", status: "beta" },
+  { name: "Matter",     transport: "Wi-Fi/Thread", topology: "fabric", latency: "18ms", status: "beta" },
+];
+
+export const ProtocolMatrix = () => {
+  return (
+    <div className="panel relative overflow-hidden rounded-sm">
+      <div className="flex items-center justify-between border-b border-border px-5 py-3">
+        <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+          adapters / matrix
+        </div>
+        <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+          08 of 24 shown
+        </span>
+      </div>
+      <div className="grid grid-cols-[1.4fr_1fr_1fr_0.8fr_0.6fr] gap-2 border-b border-border px-5 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+        <span>Protocol</span>
+        <span>Transport</span>
+        <span>Topology</span>
+        <span>p95</span>
+        <span className="text-right">State</span>
+      </div>
+      <ul className="divide-y divide-border/60">
+        {ROWS.map((r) => (
+          <li
+            key={r.name}
+            className="grid grid-cols-[1.4fr_1fr_1fr_0.8fr_0.6fr] items-center gap-2 px-5 py-3 font-mono text-xs transition-colors hover:bg-surface-2"
+          >
+            <span className="font-bold tracking-wide text-foreground">{r.name}</span>
+            <span className="text-muted-foreground">{r.transport}</span>
+            <span className="text-muted-foreground">{r.topology}</span>
+            <span className="text-primary">{r.latency}</span>
+            <span className="text-right">
+              {r.status === "live" ? (
+                <span className="chip chip-live">live</span>
+              ) : (
+                <span className="chip">beta</span>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+```
+
+### `src/components/loomwire/StatGrid.tsx` (22 lines)
+
+```tsx
+const STATS = [
+  { k: "p99 latency", v: "18", unit: "ms" },
+  { k: "throughput",  v: "2.4", unit: "M msg/s" },
+  { k: "adapters",    v: "24", unit: "live" },
+  { k: "uptime",      v: "99.998", unit: "%" },
+];
+
+export const StatGrid = () => (
+  <div className="grid grid-cols-2 gap-px overflow-hidden rounded-sm border border-border bg-border md:grid-cols-4">
+    {STATS.map((s) => (
+      <div key={s.k} className="relative bg-surface p-5">
+        <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+          {s.k}
+        </div>
+        <div className="mt-3 flex items-baseline gap-1.5">
+          <span className="font-mono text-3xl font-bold text-foreground">{s.v}</span>
+          <span className="font-mono text-[11px] text-primary">{s.unit}</span>
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+```
+
+### `src/components/loomwire/Ticker.tsx` (30 lines)
+
+```tsx
+const ROWS = [
+  "MQTT  · /sensors/temp/3a → 22.4°C",
+  "ZIGBEE · 0x4f7a · battery=87%",
+  "COAP  · /env/co2 → 412ppm",
+  "MODBUS · slave=12 · holding[3]=1",
+  "LORA  · gw-eu-2 · rssi=-104",
+  "MQTT  · /pumps/01/state → ON",
+  "ZIGBEE · 0xa1c0 · motion=true",
+  "COAP  · /valve/04 → closed",
+  "MODBUS · slave=8 · input[12]=440",
+  "LORA  · dev=eui-9b · vbat=3.71",
+];
+
+export const Ticker = () => {
+  const doubled = [...ROWS, ...ROWS];
+  return (
+    <div className="relative overflow-hidden border-y border-border bg-surface/60 py-2">
+      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-gradient-to-r from-background to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-gradient-to-l from-background to-transparent" />
+      <div className="flex w-max animate-tick gap-10 whitespace-nowrap font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+        {doubled.map((r, i) => (
+          <span key={i} className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary/70" />
+            {r}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+```
+
+### `src/components/loomwire/WeaveCanvas.tsx` (158 lines)
+
+```tsx
+import { useId } from "react";
+
+/**
+ * WeaveCanvas — animated SVG showing 5 IoT protocols being woven into one
+ * unified telemetry stream. Pure SVG, no external deps.
+ */
+const PROTOCOLS = [
+  { name: "MQTT", note: "pub/sub" },
+  { name: "CoAP", note: "udp/rest" },
+  { name: "Zigbee", note: "mesh" },
+  { name: "Modbus", note: "rtu/tcp" },
+  { name: "LoRaWAN", note: "lpwan" },
+];
+
+export const WeaveCanvas = () => {
+  const gid = useId().replace(/:/g, "");
+
+  return (
+    <div className="relative aspect-[5/4] w-full">
+      <svg
+        viewBox="0 0 600 480"
+        className="absolute inset-0 h-full w-full"
+        role="img"
+        aria-label="Five IoT protocols weaving into one fused stream"
+      >
+        <defs>
+          <linearGradient id={`weave-${gid}`} x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.1" />
+            <stop offset="50%" stopColor="hsl(var(--primary-glow))" stopOpacity="1" />
+            <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.1" />
+          </linearGradient>
+          <radialGradient id={`core-${gid}`} cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="hsl(var(--primary-glow))" stopOpacity="0.95" />
+            <stop offset="60%" stopColor="hsl(var(--primary))" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
+          </radialGradient>
+          <filter id={`blur-${gid}`}>
+            <feGaussianBlur stdDeviation="6" />
+          </filter>
+        </defs>
+
+        {/* Outgoing fused stream core */}
+        <circle cx="500" cy="240" r="80" fill={`url(#core-${gid})`} filter={`url(#blur-${gid})`} />
+        <circle cx="500" cy="240" r="22" fill="hsl(var(--primary))" opacity="0.9" />
+        <circle
+          cx="500"
+          cy="240"
+          r="34"
+          fill="none"
+          stroke="hsl(var(--primary-glow))"
+          strokeWidth="1"
+          opacity="0.7"
+        />
+        <circle
+          cx="500"
+          cy="240"
+          r="48"
+          fill="none"
+          stroke="hsl(var(--primary))"
+          strokeWidth="0.5"
+          strokeDasharray="2 4"
+          className="animate-weave-rotate"
+          style={{ transformOrigin: "500px 240px" }}
+        />
+
+        {/* Protocol nodes + woven curves */}
+        {PROTOCOLS.map((p, i) => {
+          const y = 60 + i * 90;
+          const cx1 = 220;
+          const cy1 = 240;
+          const cx2 = 320;
+          const cy2 = y;
+          const path = `M 130 ${y} C ${cx1} ${cy1}, ${cx2} ${cy2}, 478 240`;
+          const delay = `${i * 0.18}s`;
+          return (
+            <g key={p.name}>
+              {/* base track */}
+              <path
+                d={path}
+                fill="none"
+                stroke="hsl(var(--border))"
+                strokeWidth="1"
+                opacity="0.55"
+              />
+              {/* animated signal */}
+              <path
+                d={path}
+                fill="none"
+                stroke={`url(#weave-${gid})`}
+                strokeWidth="1.6"
+                strokeDasharray="6 14"
+                className="animate-flow"
+                style={{ animationDelay: delay }}
+              />
+              {/* protocol node */}
+              <g transform={`translate(70 ${y - 14})`}>
+                <rect
+                  width="78"
+                  height="28"
+                  rx="2"
+                  fill="hsl(var(--surface-2))"
+                  stroke="hsl(var(--border))"
+                />
+                <circle cx="10" cy="14" r="3" fill="hsl(var(--primary))" className="animate-pulse-soft" />
+                <text
+                  x="20"
+                  y="18"
+                  fontFamily="JetBrains Mono, monospace"
+                  fontSize="10"
+                  fontWeight="700"
+                  fill="hsl(var(--foreground))"
+                  letterSpacing="0.05em"
+                >
+                  {p.name}
+                </text>
+              </g>
+            </g>
+          );
+        })}
+
+        {/* Output label */}
+        <g transform="translate(540 232)">
+          <text
+            fontFamily="JetBrains Mono, monospace"
+            fontSize="9"
+            fill="hsl(var(--muted-foreground))"
+            letterSpacing="0.2em"
+          >
+            STREAM
+          </text>
+          <text
+            y="14"
+            fontFamily="JetBrains Mono, monospace"
+            fontSize="11"
+            fontWeight="700"
+            fill="hsl(var(--primary-glow))"
+            letterSpacing="0.1em"
+          >
+            unified://
+          </text>
+        </g>
+
+        {/* Crosshatch corner ticks */}
+        {[
+          [10, 10],
+          [590, 10],
+          [10, 470],
+          [590, 470],
+        ].map(([x, y], i) => (
+          <g key={i} stroke="hsl(var(--primary) / 0.5)" strokeWidth="1">
+            <line x1={x - 6} y1={y} x2={x + 6} y2={y} />
+            <line x1={x} y1={y - 6} x2={x} y2={y + 6} />
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+};
+
+```
+
+## 5. Full source — Analytics & report components
+
+### `src/components/LatencyChart.tsx` (56 lines)
+
+```tsx
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import type { LatencyStats } from '@/lib/simulation';
+import { InfoTooltip } from './InfoTooltip';
+
+interface LatencyChartProps {
+  stats: LatencyStats[];
+}
+
+export function LatencyChart({ stats }: LatencyChartProps) {
+  const chartData = stats.map(s => ({
+    protocol: s.protocol,
+    P50: Number(s.p50.toFixed(3)),
+    P95: Number(s.p95.toFixed(3)),
+    P99: Number(s.p99.toFixed(3)),
+    Mean: Number(s.mean.toFixed(3)),
+  }));
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="flex items-center gap-2 mb-1">
+        <h3 className="text-sm font-semibold text-foreground">延迟分布 (ms)</h3>
+        <InfoTooltip
+          content="延迟指从收到原始数据包到生成UIR记录的端到端处理时间。使用百分位数（而非平均值）评估是工业系统的标准做法，因为尾部延迟决定了系统的实时性保障。"
+          formula="P95 = 95%的请求在此时间内完成"
+        />
+      </div>
+      <p className="text-xs text-muted-foreground mb-3">
+        <strong>P50(中位数)</strong>：一半消息在此时间内处理完成，反映典型性能；
+        <strong>P95</strong>：95%消息的处理时间上界，工业系统关键指标（目标 &lt; 50ms）；
+        <strong>P99</strong>：极端情况下的延迟，检测系统稳定性。
+        注：当前为浏览器仿真延迟，实际ARM边缘设备上延迟约为此值的10-50倍。
+      </p>
+      <ResponsiveContainer width="100%" height={250}>
+        <BarChart data={chartData}>
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+          <XAxis dataKey="protocol" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
+          <YAxis tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" label={{ value: 'ms', position: 'insideLeft', offset: -5, style: { fontSize: 11 } }} />
+          <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <Bar dataKey="P50" fill="hsl(var(--chart-1))" radius={[2, 2, 0, 0]} />
+          <Bar dataKey="P95" fill="hsl(var(--chart-3))" radius={[2, 2, 0, 0]} />
+          <Bar dataKey="P99" fill="hsl(var(--chart-4))" radius={[2, 2, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+      <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+        {stats.map(s => (
+          <div key={s.protocol} className="rounded border border-border p-2">
+            <p className="font-medium text-foreground">{s.protocol}</p>
+            <p className="text-muted-foreground">样本数: {s.samples.length.toLocaleString()}</p>
+            <p className="text-muted-foreground">均值: {s.mean.toFixed(3)}ms</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+```
+
+### `src/components/ThroughputChart.tsx` (38 lines)
+
+```tsx
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import type { ThroughputPoint } from '@/lib/simulation';
+import { InfoTooltip } from './InfoTooltip';
+
+interface ThroughputChartProps {
+  data: ThroughputPoint[];
+}
+
+export function ThroughputChart({ data }: ThroughputChartProps) {
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="flex items-center gap-2 mb-1">
+        <h3 className="text-sm font-semibold text-foreground">吞吐量时间线 (消息/tick)</h3>
+        <InfoTooltip
+          content="每个采样点记录该tick内各协议生成的UIR记录数。Modbus每tick恒定产生(3线×4PLC×3寄存器=36条)，MQTT、CoAP和OPC UA周期性出现尖峰。"
+          formula="Total = Modbus + MQTT + OPC_UA + CoAP (per tick)"
+        />
+      </div>
+      <p className="text-xs text-muted-foreground mb-3">
+        Modbus RTU为主要数据源（占比约95%），提供持续高频数据流；
+        MQTT每10个tick触发（环境监测），CoAP每15个tick触发（能耗监测），OPC UA每50个tick触发（MES产线指标）。
+      </p>
+      <ResponsiveContainer width="100%" height={250}>
+        <AreaChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+          <XAxis dataKey="tick" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+          <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+          <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <Area type="monotone" dataKey="modbus" stackId="1" fill="hsl(var(--chart-1))" stroke="hsl(var(--chart-1))" fillOpacity={0.6} name="Modbus RTU" />
+          <Area type="monotone" dataKey="mqtt" stackId="1" fill="hsl(var(--chart-2))" stroke="hsl(var(--chart-2))" fillOpacity={0.6} name="MQTT" />
+          <Area type="monotone" dataKey="opcua" stackId="1" fill="hsl(var(--chart-3))" stroke="hsl(var(--chart-3))" fillOpacity={0.6} name="OPC UA" />
+          <Area type="monotone" dataKey="coap" stackId="1" fill="hsl(var(--chart-4))" stroke="hsl(var(--chart-4))" fillOpacity={0.6} name="CoAP" />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+```
+
+### `src/components/ResourceChart.tsx` (35 lines)
+
+```tsx
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import type { ResourcePoint } from '@/lib/simulation';
+import { InfoTooltip } from './InfoTooltip';
+
+interface ResourceChartProps {
+  data: ResourcePoint[];
+}
+
+export function ResourceChart({ data }: ResourceChartProps) {
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="flex items-center gap-2 mb-1">
+        <h3 className="text-sm font-semibold text-foreground">资源占用趋势</h3>
+        <InfoTooltip
+          content="模拟ARM Cortex-A72级别边缘设备（如Raspberry Pi 4）的CPU和内存占用。随着仿真推进，UIR缓存增长导致内存上升。实际部署中需配合滑动窗口清理策略控制内存。"
+        />
+      </div>
+      <p className="text-xs text-muted-foreground mb-3">
+        边缘设备约束：CPU ≤ 4核 1.5GHz，RAM ≤ 4GB。当CPU &gt; 70%或RAM &gt; 80%时需触发降级策略（降低融合窗口频率或丢弃低优先级OPC UA数据）。
+      </p>
+      <ResponsiveContainer width="100%" height={250}>
+        <LineChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+          <XAxis dataKey="tick" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+          <YAxis yAxisId="cpu" tick={{ fontSize: 11 }} stroke="hsl(var(--chart-1))" domain={[0, 100]} label={{ value: 'CPU %', angle: -90, position: 'insideLeft', style: { fontSize: 10 } }} />
+          <YAxis yAxisId="mem" orientation="right" tick={{ fontSize: 11 }} stroke="hsl(var(--chart-2))" label={{ value: 'MB', angle: 90, position: 'insideRight', style: { fontSize: 10 } }} />
+          <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <Line yAxisId="cpu" type="monotone" dataKey="cpuPercent" stroke="hsl(var(--chart-1))" strokeWidth={2} dot={false} name="CPU %" />
+          <Line yAxisId="mem" type="monotone" dataKey="memoryMB" stroke="hsl(var(--chart-2))" strokeWidth={2} dot={false} name="Memory (MB)" />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+```
+
+### `src/components/ConfusionMatrix.tsx` (86 lines)
+
+```tsx
+import type { ConfusionMatrixData } from '@/lib/simulation';
+import { InfoTooltip } from './InfoTooltip';
+
+interface ConfusionMatrixProps {
+  data: ConfusionMatrixData;
+}
+
+export function ConfusionMatrix({ data }: ConfusionMatrixProps) {
+  const maxVal = Math.max(...data.matrix.flat());
+  const total = data.matrix.flat().reduce((a, b) => a + b, 0);
+  const diagSum = data.matrix.reduce((s, row, i) => s + row[i], 0);
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="flex items-center gap-2 mb-1">
+        <h3 className="text-sm font-semibold text-foreground">混淆矩阵热力图</h3>
+        <InfoTooltip
+          content="混淆矩阵显示协议指纹检测的分类效果。行表示数据包的真实协议，列表示引擎检测到的协议。对角线上的值越高，表示该协议识别越准确。"
+          formula="准确率 = Σ对角线 / Σ总数 = diagonal_sum / total"
+        />
+      </div>
+      <p className="text-xs text-muted-foreground mb-3">
+        行 = 真实协议（ground truth），列 = 检测结果（predicted）。
+        对角线值 = 正确分类数（{diagSum.toLocaleString()}），总样本 = {total.toLocaleString()}，
+        总体准确率 = {(diagSum / total * 100).toFixed(1)}%。
+        非对角线值 = 误分类，值越小越好。
+      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr>
+              <th className="p-2 text-left text-muted-foreground">真实 ↓ / 预测 →</th>
+              {data.labels.map(label => (
+                <th key={label} className="p-2 text-center font-medium text-foreground">{label}</th>
+              ))}
+              <th className="p-2 text-center text-muted-foreground">召回率</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.matrix.map((row, i) => {
+              const rowSum = row.reduce((a, b) => a + b, 0);
+              const recall = rowSum > 0 ? (row[i] / rowSum * 100).toFixed(1) : '0.0';
+              return (
+                <tr key={i}>
+                  <td className="p-2 font-medium text-foreground">{data.labels[i]}</td>
+                  {row.map((val, j) => {
+                    const intensity = maxVal > 0 ? val / maxVal : 0;
+                    const isDiag = i === j;
+                    return (
+                      <td
+                        key={j}
+                        className="p-2 text-center font-mono"
+                        style={{
+                          backgroundColor: isDiag
+                            ? `hsl(142 71% 45% / ${0.15 + intensity * 0.6})`
+                            : val > 0
+                            ? `hsl(0 84% 60% / ${0.1 + intensity * 0.4})`
+                            : 'transparent',
+                          color: intensity > 0.6 ? 'white' : undefined,
+                        }}
+                      >
+                        {val.toLocaleString()}
+                      </td>
+                    );
+                  })}
+                  <td className="p-2 text-center text-muted-foreground">{recall}%</td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td className="p-2 text-muted-foreground">精确率</td>
+              {data.labels.map((_, j) => {
+                const colSum = data.matrix.reduce((s, row) => s + row[j], 0);
+                const prec = colSum > 0 ? (data.matrix[j][j] / colSum * 100).toFixed(1) : '0.0';
+                return <td key={j} className="p-2 text-center text-muted-foreground">{prec}%</td>;
+              })}
+              <td className="p-2 text-center font-semibold text-foreground">{(diagSum / total * 100).toFixed(1)}%</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+```
+
+### `src/components/ClassificationReport.tsx` (72 lines)
+
+```tsx
+import type { ClassificationMetrics } from '@/lib/simulation';
+import { InfoTooltip } from './InfoTooltip';
+
+interface ClassificationReportProps {
+  metrics: ClassificationMetrics[];
+}
+
+export function ClassificationReport({ metrics }: ClassificationReportProps) {
+  const totalSupport = metrics.reduce((s, m) => s + m.support, 0);
+  const weightedF1 = metrics.reduce((s, m) => s + m.f1 * m.support, 0) / totalSupport;
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="flex items-center gap-2 mb-1">
+        <h3 className="text-sm font-semibold text-foreground">分类性能报告</h3>
+        <InfoTooltip content="基于混淆矩阵计算的每协议分类指标。在IoT场景中，召回率特别重要——漏检一个协议可能导致该传感器数据完全丢失。" />
+      </div>
+      <p className="text-xs text-muted-foreground mb-3">
+        <strong>精确率(Precision)</strong> = TP/(TP+FP)，检测结果中真正属于该协议的比例；
+        <strong>召回率(Recall)</strong> = TP/(TP+FN)，该协议样本被正确检出的比例；
+        <strong>F1</strong> = 2×P×R/(P+R)，精确率和召回率的调和平均数。
+        Support = 该协议的真实样本数。
+      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="p-2 text-left text-muted-foreground">协议</th>
+              <th className="p-2 text-center text-muted-foreground">Precision</th>
+              <th className="p-2 text-center text-muted-foreground">Recall</th>
+              <th className="p-2 text-center text-muted-foreground">F1-Score</th>
+              <th className="p-2 text-center text-muted-foreground">Support</th>
+              <th className="p-2 text-left text-muted-foreground">识别特征</th>
+            </tr>
+          </thead>
+          <tbody>
+            {metrics.map(m => (
+              <tr key={m.protocol} className="border-b border-border/50">
+                <td className="p-2 font-medium text-foreground">{m.protocol}</td>
+                <td className="p-2 text-center font-mono">{(m.precision * 100).toFixed(1)}%</td>
+                <td className="p-2 text-center font-mono">{(m.recall * 100).toFixed(1)}%</td>
+                <td className="p-2 text-center font-mono font-semibold">{(m.f1 * 100).toFixed(1)}%</td>
+                <td className="p-2 text-center text-muted-foreground">{m.support.toLocaleString()}</td>
+                <td className="p-2 text-muted-foreground">
+                  {m.protocol === 'modbus_rtu' && 'CRC16校验 + 功能码'}
+                  {m.protocol === 'mqtt' && '固定报头 0x30-0x3F'}
+                  {m.protocol === 'opcua' && '"OPN" 魔术字节'}
+                  {m.protocol === 'coap' && '版本号 01xx (0x4x) + 响应码'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t border-border">
+              <td className="p-2 font-semibold text-foreground">加权平均</td>
+              <td className="p-2 text-center">—</td>
+              <td className="p-2 text-center">—</td>
+              <td className="p-2 text-center font-mono font-semibold">{(weightedF1 * 100).toFixed(1)}%</td>
+              <td className="p-2 text-center text-muted-foreground">{totalSupport.toLocaleString()}</td>
+              <td className="p-2"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <p className="mt-2 text-xs text-muted-foreground">
+        💡 Modbus RTU通过CRC16校验实现近100%精确率；MQTT依赖固定报头特征(0x30-0x3F)；
+        OPC UA通过"OPN"魔术字节签名识别；CoAP通过版本号模式(首字节01xxxxxx=0x4x)和响应码结构识别。
+        四种协议特征正交性高，因此整体F1较高。
+      </p>
+    </div>
+  );
+}
+
+```
+
+### `src/components/ComparisonTable.tsx` (53 lines)
+
+```tsx
+import { InfoTooltip } from './InfoTooltip';
+
+export function ComparisonTable() {
+  const rows = [
+    { metric: '端到端延迟 (P95)', centralized: '~120 ms', layered: '~48 ms', improvement: '↓ 60%', note: '边缘预处理避免云端往返' },
+    { metric: '吞吐量 (msg/s)', centralized: '~2,000', layered: '~8,500', improvement: '↑ 325%', note: '边缘并行处理+本地融合' },
+    { metric: '带宽占用', centralized: '100%原始数据上云', layered: '仅融合后数据上云', improvement: '↓ 75%', note: '融合率约25%，4:1压缩' },
+    { metric: '单点故障', centralized: '云端宕机全线停', layered: '边缘自治运行', improvement: '高可用', note: '边缘缓存+断网续传' },
+    { metric: '协议扩展', centralized: '需改中心代码', layered: '热插拔适配器', improvement: '灵活', note: 'IProtocolAdapter接口' },
+    { metric: '数据隐私', centralized: '全量上云', layered: '敏感数据边缘处理', improvement: '合规', note: '符合IEC 62443' },
+    { metric: 'CPU占用 (边缘)', centralized: 'N/A', layered: '~35-55%', improvement: '可控', note: 'ARM Cortex-A72级别' },
+    { metric: 'CoAP低功耗支持', centralized: '需云端CoAP代理', layered: '边缘直接6LoWPAN桥接', improvement: '低功耗', note: '传感器电池寿命延长2-3倍' },
+  ];
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="flex items-center gap-2 mb-1">
+        <h3 className="text-sm font-semibold text-foreground">架构对比：单层集中式 vs 分层部署</h3>
+        <InfoTooltip content="对比传统「所有设备直连云端」的集中式架构与本文提出的「设备-边缘-雾-云」四层架构在延迟、吞吐量、可用性等维度的差异。新增CoAP低功耗协议支持的对比。" />
+      </div>
+      <p className="text-xs text-muted-foreground mb-3">
+        <strong>单层集中式：</strong>所有IoT设备直接将原始数据发送到云端处理，协议翻译和融合均在云端完成。
+        优点是架构简单，缺点是延迟高、带宽浪费、单点故障风险大。<br/>
+        <strong>分层架构(本文方案)：</strong>协议翻译和时间窗融合下沉到边缘层，仅融合后的标准化数据上云。
+        延迟降低约60%，带宽节省约75%，且边缘节点可在断网时自治运行。CoAP设备通过6LoWPAN网关直接接入边缘层，无需云端中转。
+      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="p-2 text-left text-muted-foreground">指标</th>
+              <th className="p-2 text-center text-muted-foreground">单层集中式</th>
+              <th className="p-2 text-center text-muted-foreground">分层架构(本文)</th>
+              <th className="p-2 text-center text-muted-foreground">提升</th>
+              <th className="p-2 text-left text-muted-foreground">说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={i} className="border-b border-border/50">
+                <td className="p-2 font-medium text-foreground">{row.metric}</td>
+                <td className="p-2 text-center text-muted-foreground">{row.centralized}</td>
+                <td className="p-2 text-center font-medium text-foreground">{row.layered}</td>
+                <td className="p-2 text-center font-semibold text-industrial-green">{row.improvement}</td>
+                <td className="p-2 text-muted-foreground">{row.note}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+```
+
+### `src/components/DataPipelineFlow.tsx` (79 lines)
+
+```tsx
+import { ArrowRight, Cpu, Radio, Layers, Database } from 'lucide-react';
+import type { SimulationResults } from '@/lib/simulation';
+
+interface DataPipelineFlowProps {
+  results: SimulationResults;
+}
+
+export function DataPipelineFlow({ results }: DataPipelineFlowProps) {
+  const steps = [
+    {
+      icon: Radio,
+      title: '设备层',
+      subtitle: `${results.productionLines}条产线 · 280+数据点`,
+      detail: 'Modbus RTU + MQTT + OPC UA + CoAP',
+      color: 'text-industrial-blue',
+      bgColor: 'bg-industrial-blue/10',
+      borderColor: 'border-industrial-blue/30',
+    },
+    {
+      icon: Cpu,
+      title: '协议检测 & UIR翻译',
+      subtitle: `总处理消息: ${results.totalMessages.toLocaleString()}`,
+      detail: `准确率 ${(results.recognitionAccuracy * 100).toFixed(1)}%`,
+      color: 'text-industrial-green',
+      bgColor: 'bg-industrial-green/10',
+      borderColor: 'border-industrial-green/30',
+    },
+    {
+      icon: Layers,
+      title: '时间窗融合引擎',
+      subtitle: `融合记录: ${results.fusedRecords.toLocaleString()}`,
+      detail: `冲突消解: ${results.conflictsResolved} · 融合率 ${(results.fusionRatio * 100).toFixed(1)}%`,
+      color: 'text-industrial-amber',
+      bgColor: 'bg-industrial-amber/10',
+      borderColor: 'border-industrial-amber/30',
+    },
+    {
+      icon: Database,
+      title: '输出',
+      subtitle: '去重 & 标准化数据',
+      detail: `数据压缩比 ${(1 / results.fusionRatio).toFixed(1)}:1`,
+      color: 'text-primary',
+      bgColor: 'bg-primary/10',
+      borderColor: 'border-primary/30',
+    },
+  ];
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <h3 className="text-sm font-semibold text-foreground mb-1">数据处理流水线</h3>
+      <p className="text-xs text-muted-foreground mb-4">
+        原始工业协议数据经过「指纹检测 → UIR翻译 → 时间窗融合」三阶段处理，实现多源异构数据的统一表示与去冗余。
+      </p>
+      <div className="flex flex-col md:flex-row items-stretch gap-2">
+        {steps.map((step, i) => (
+          <div key={i} className="flex items-center gap-2 flex-1">
+            <div className={`flex-1 rounded-lg border ${step.borderColor} ${step.bgColor} p-3`}>
+              <div className="flex items-center gap-2 mb-1">
+                <step.icon className={`h-4 w-4 ${step.color}`} />
+                <span className={`text-xs font-semibold ${step.color}`}>{step.title}</span>
+              </div>
+              <p className="text-xs font-medium text-foreground">{step.subtitle}</p>
+              <p className="text-xs text-muted-foreground">{step.detail}</p>
+            </div>
+            {i < steps.length - 1 && (
+              <ArrowRight className="h-4 w-4 text-muted-foreground hidden md:block flex-shrink-0" />
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 text-xs text-muted-foreground border-t border-border pt-2">
+        <strong>数据关系：</strong>
+        总处理消息 = Σ(各协议UIR记录) = {results.protocolBreakdown.map(p => `${p.protocol}: ${p.count.toLocaleString()}`).join(' + ')}；
+        融合记录 ⊂ 总处理消息（经时间窗去重后）；
+        冲突消解 ⊂ 融合记录（变异系数CV &gt; 15%时触发置信度加权融合）
+      </div>
+    </div>
+  );
+}
+
+```
+
+### `src/components/TechnicalReport.tsx` (289 lines)
+
+```tsx
+import type { SimulationResults } from '@/lib/simulation';
+import { InfoTooltip } from './InfoTooltip';
+import { CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+
+interface TechnicalReportProps {
+  results: SimulationResults;
+}
+
+export function TechnicalReport({ results }: TechnicalReportProps) {
+  const passCount = results.e2eTestResults.filter(t => t.status === 'pass').length;
+  const warnCount = results.e2eTestResults.filter(t => t.status === 'warn').length;
+  const failCount = results.e2eTestResults.filter(t => t.status === 'fail').length;
+
+  return (
+    <div className="space-y-6">
+      {/* ===== Hardware Configuration ===== */}
+      <div className="rounded-lg border border-border bg-card p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <h3 className="text-sm font-semibold text-foreground">🖥️ 硬件配置清单 (Hardware Configuration)</h3>
+          <InfoTooltip content="实际部署所需的硬件设备清单，涵盖边缘网关、工业控制器、传感器节点和云端服务器。所有设备均为市场可采购的商用产品。" />
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">
+          以下为推荐的最小部署配置。边缘网关采用ARM Cortex-A72级别处理器（如Raspberry Pi 4），
+          满足P95 &lt; 50ms延迟和4协议并行处理需求。CoAP传感器节点采用低功耗MCU，电池供电可运行2-5年。
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="p-2 text-left text-muted-foreground">设备</th>
+                <th className="p-2 text-left text-muted-foreground">角色</th>
+                <th className="p-2 text-left text-muted-foreground">处理器</th>
+                <th className="p-2 text-left text-muted-foreground">内存</th>
+                <th className="p-2 text-left text-muted-foreground">网络</th>
+                <th className="p-2 text-left text-muted-foreground">功耗</th>
+                <th className="p-2 text-left text-muted-foreground">成本</th>
+              </tr>
+            </thead>
+            <tbody>
+              {results.hardwareConfigs.map((hw, i) => (
+                <tr key={i} className="border-b border-border/50">
+                  <td className="p-2 font-medium text-foreground whitespace-nowrap">{hw.name}</td>
+                  <td className="p-2 text-muted-foreground">{hw.role}</td>
+                  <td className="p-2 text-muted-foreground text-[11px]">{hw.cpu}</td>
+                  <td className="p-2 text-muted-foreground whitespace-nowrap">{hw.ram}</td>
+                  <td className="p-2 text-muted-foreground text-[11px]">{hw.network}</td>
+                  <td className="p-2 text-muted-foreground whitespace-nowrap">{hw.power}</td>
+                  <td className="p-2 font-mono text-foreground whitespace-nowrap">{hw.cost}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-3 bg-muted/50 rounded p-3 text-xs text-muted-foreground">
+          <p className="font-semibold text-foreground mb-1">📋 部署拓扑说明</p>
+          <ul className="space-y-1 ml-2">
+            <li>• <strong>每条产线</strong>配置1台边缘网关(Raspberry Pi 4 / IOT2050)，负责该产线所有设备的协议翻译与融合</li>
+            <li>• <strong>Modbus设备</strong>(PLC/变频器)通过RS485总线接入边缘网关的RS485 HAT</li>
+            <li>• <strong>MQTT传感器</strong>通过WiFi/Ethernet连接到边缘网关上运行的Mosquitto Broker</li>
+            <li>• <strong>OPC UA节点</strong>(MES系统)通过工业以太网直连边缘网关</li>
+            <li>• <strong>CoAP传感器</strong>(能耗监测)通过6LoWPAN/IEEE 802.15.4网关桥接到边缘层，适用于电池供电场景</li>
+            <li>• <strong>云端VM</strong>运行数据聚合服务，接收各边缘网关上传的融合后UIR数据</li>
+          </ul>
+        </div>
+      </div>
+
+      {/* ===== E2E Test Results ===== */}
+      <div className="rounded-lg border border-border bg-card p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <h3 className="text-sm font-semibold text-foreground">🧪 端到端测试报告 (E2E Test Results)</h3>
+          <InfoTooltip content="对仿真系统的10项关键指标进行自动化验证，覆盖协议识别、数据融合、延迟性能、资源占用和扩展性等维度。" />
+        </div>
+        <div className="flex items-center gap-4 mb-3">
+          <div className="flex items-center gap-1 text-xs">
+            <CheckCircle2 className="h-4 w-4 text-industrial-green" />
+            <span className="text-foreground font-medium">{passCount} 通过</span>
+          </div>
+          <div className="flex items-center gap-1 text-xs">
+            <AlertTriangle className="h-4 w-4 text-industrial-amber" />
+            <span className="text-foreground font-medium">{warnCount} 警告</span>
+          </div>
+          <div className="flex items-center gap-1 text-xs">
+            <XCircle className="h-4 w-4 text-industrial-red" />
+            <span className="text-foreground font-medium">{failCount} 失败</span>
+          </div>
+          <span className="text-xs text-muted-foreground ml-auto">
+            通过率: {((passCount / results.e2eTestResults.length) * 100).toFixed(0)}%
+          </span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="p-2 text-left text-muted-foreground">状态</th>
+                <th className="p-2 text-left text-muted-foreground">测试项</th>
+                <th className="p-2 text-left text-muted-foreground">说明</th>
+                <th className="p-2 text-left text-muted-foreground">指标</th>
+                <th className="p-2 text-left text-muted-foreground">期望值</th>
+                <th className="p-2 text-left text-muted-foreground">实际值</th>
+              </tr>
+            </thead>
+            <tbody>
+              {results.e2eTestResults.map((test, i) => (
+                <tr key={i} className="border-b border-border/50">
+                  <td className="p-2">
+                    {test.status === 'pass' && <CheckCircle2 className="h-4 w-4 text-industrial-green" />}
+                    {test.status === 'warn' && <AlertTriangle className="h-4 w-4 text-industrial-amber" />}
+                    {test.status === 'fail' && <XCircle className="h-4 w-4 text-industrial-red" />}
+                  </td>
+                  <td className="p-2 font-medium text-foreground whitespace-nowrap">{test.testName}</td>
+                  <td className="p-2 text-muted-foreground">{test.description}</td>
+                  <td className="p-2 text-muted-foreground whitespace-nowrap">{test.metric}</td>
+                  <td className="p-2 font-mono text-muted-foreground whitespace-nowrap">{test.expected}</td>
+                  <td className="p-2 font-mono text-foreground">{test.actual}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {/* Test details accordion */}
+        <div className="mt-3 space-y-2">
+          {results.e2eTestResults.map((test, i) => (
+            <details key={i} className="bg-muted/50 rounded p-2">
+              <summary className="text-xs font-medium text-foreground cursor-pointer">
+                {test.status === 'pass' ? '✅' : test.status === 'warn' ? '⚠️' : '❌'} {test.testName} — 详细分析
+              </summary>
+              <p className="text-xs text-muted-foreground mt-1 ml-4">{test.details}</p>
+            </details>
+          ))}
+        </div>
+      </div>
+
+      {/* ===== Architecture Diagram ===== */}
+      <div className="rounded-lg border border-border bg-card p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <h3 className="text-sm font-semibold text-foreground">四层部署架构图</h3>
+          <InfoTooltip content="设备-边缘-雾-云四层架构，每层有明确的功能职责和延迟目标。数据量逐层递减，智能度逐层递增。" />
+        </div>
+        <pre className="text-xs font-mono bg-muted/50 rounded p-3 overflow-x-auto text-foreground leading-relaxed">
+{`┌─────────────────────────────────────────────────────────────┐
+│                    ☁️  云层 (Cloud)                           │
+│  • 全局数据分析 & AI模型训练                                   │
+│  • 历史数据存储 & 跨工厂协同                                   │
+│  • 延迟要求: 秒级可接受                                        │
+├─────────────────────────────────────────────────────────────┤
+│                    🌫️  雾层 (Fog)                             │
+│  • 跨产线数据聚合 & 趋势分析                                   │
+│  • 规则引擎 & 告警关联                                         │
+│  • 延迟目标: < 200ms                                          │
+├─────────────────────────────────────────────────────────────┤
+│              ⚡ 边缘层 (Edge) ← 核心处理层                     │
+│  ┌──────────┐  ┌──────────────┐  ┌────────────────┐          │
+│  │协议指纹检测│→│ UIR统一翻译   │→│ 时间窗融合引擎  │          │
+│  │CRC16/签名 │  │ 异构→标准JSON │  │ 去重+冲突消解   │          │
+│  │版本号检测 │  │ 4协议→1 UIR  │  │ CV>15%加权融合  │          │
+│  └──────────┘  └──────────────┘  └────────────────┘          │
+│  • 延迟目标: P95 < 50ms                                       │
+│  • 硬件: ARM Cortex-A72, 4GB RAM                              │
+├─────────────────────────────────────────────────────────────┤
+│                  📡 设备层 (Device)                             │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐        │
+│  │Modbus RTU│ │   MQTT   │ │  OPC UA  │ │   CoAP   │        │
+│  │ PLC×12   │ │ 传感器×6  │ │  MES×6   │ │ 能耗×6   │        │
+│  │ 36条/tick │ │ 6条/10t  │ │ 6条/50t  │ │ 6条/15t  │        │
+│  │ RS485    │ │ WiFi/ETH │ │ 工业ETH  │ │ 6LoWPAN  │        │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘        │
+│  • ${results.productionLines}条产线, 280+数据点, 9种终端类型                    │
+└─────────────────────────────────────────────────────────────┘`}
+        </pre>
+      </div>
+
+      {/* ===== UIR Schema ===== */}
+      <div className="rounded-lg border border-border bg-card p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <h3 className="text-sm font-semibold text-foreground">统一中间表示 (UIR) Schema</h3>
+          <InfoTooltip content="UIR是协议翻译的输出标准格式。所有异构协议数据在边缘层被转换为UIR后，上层融合引擎无需感知底层协议差异，实现O(N)复杂度扩展。" />
+        </div>
+        <p className="text-xs text-muted-foreground mb-2">
+          UIR将协议解耦为「适配器翻译」和「融合处理」两个独立关注点。新增协议(如CoAP)只需实现IProtocolAdapter接口，
+          无需修改融合引擎代码，扩展复杂度从O(N²)降至O(N)。
+        </p>
+        <pre className="text-xs font-mono bg-muted/50 rounded p-3 overflow-x-auto text-foreground">
+{`interface UIRRecord {
+  protocol:         string;    // 来源协议标识 (modbus_rtu|mqtt|opcua|coap)
+  source_id:        string;    // 设备唯一标识 (e.g., "line0_plc2", "line1_coap_sensor0")
+  entity_id:        string;    // 逻辑实体标识 (用于融合分组)
+  measurement_type: string;    // 测量类型 (temperature/vibration/energy_consumption/...)
+  value:            number;    // 归一化数值
+  unit:             string;    // 物理单位 (°C, kWh, V, PF, ...)
+  timestamp:        number;    // Unix时间戳 (ms)
+  quality:          number;    // 数据质量 [0,1], 用于置信度加权
+  raw_size:         number;    // 原始报文字节数
+}`}
+        </pre>
+      </div>
+
+      {/* ===== Data Relationship Summary ===== */}
+      <div className="rounded-lg border border-border bg-card p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <h3 className="text-sm font-semibold text-foreground">数据关系总结</h3>
+          <InfoTooltip content="本仿真中各指标之间的因果链和数学关系。" />
+        </div>
+        <div className="text-xs space-y-3 text-foreground">
+          <div className="bg-muted/50 rounded p-3">
+            <p className="font-semibold mb-1">📊 数据量级链</p>
+            <pre className="font-mono text-muted-foreground leading-relaxed">
+{`设备层原始数据点:  ${results.productionLines}线 × (4 PLC + 2 MQTT + 2 OPC_UA + 2 CoAP) = ${results.productionLines * 10} 终端
+↓ 协议翻译(每PLC产3条UIR, 其余各1条)
+总处理消息(UIR):   ${results.totalMessages.toLocaleString()} 条
+↓ 时间窗融合(窗口=5 ticks, 按entity_id分组去重)
+融合记录:          ${results.fusedRecords.toLocaleString()} 条 (融合率 ${(results.fusionRatio * 100).toFixed(1)}%)
+  └─ 其中冲突消解: ${results.conflictsResolved} 条 (CV > 15% 触发加权融合)`}
+            </pre>
+          </div>
+
+          <div className="bg-muted/50 rounded p-3">
+            <p className="font-semibold mb-1">🔬 协议数据分布</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-1">
+              {results.protocolBreakdown.map(p => (
+                <div key={p.protocol} className="border border-border rounded p-2">
+                  <p className="font-medium">{p.protocol}</p>
+                  <p className="text-lg font-mono font-bold">{p.count.toLocaleString()}</p>
+                  <p className="text-muted-foreground">{p.percentage.toFixed(1)}%</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-muted/50 rounded p-3">
+            <p className="font-semibold mb-1">📐 关键公式</p>
+            <ul className="font-mono text-muted-foreground space-y-1 ml-2">
+              <li>• 识别准确率 = Σ(混淆矩阵对角线) / Σ(混淆矩阵总数)</li>
+              <li>• 融合率 = 融合记录 / 总处理消息</li>
+              <li>• 数据压缩比 = 1 / 融合率 = {(1 / results.fusionRatio).toFixed(1)}:1</li>
+              <li>• 冲突检测: CV = σ/μ, 当CV &gt; 0.15 → 置信度加权融合</li>
+              <li>• 加权融合值 = Σ(value_i × quality_i) / Σ(quality_i)</li>
+              <li>• F1 = 2 × Precision × Recall / (Precision + Recall)</li>
+            </ul>
+          </div>
+
+          <div className="bg-muted/50 rounded p-3">
+            <p className="font-semibold mb-1">⏱️ 延迟指标说明</p>
+            <p className="text-muted-foreground">
+              P50/P95/P99为百分位延迟，非平均值。P95 &lt; 50ms意味着95%的消息在50ms内完成处理。
+              当前仿真在浏览器JS引擎中运行，实际ARM设备延迟约为仿真值的20-40倍。
+              分层架构通过边缘本地处理避免云端网络往返，P95延迟从集中式的~120ms降至~48ms。
+            </p>
+          </div>
+
+          <div className="bg-muted/50 rounded p-3">
+            <p className="font-semibold mb-1">📡 CoAP协议说明</p>
+            <p className="text-muted-foreground">
+              CoAP (Constrained Application Protocol, RFC 7252) 是专为受限设备和低功耗网络设计的轻量级应用层协议。
+              在本系统中用于能耗监测传感器(电能表、功率因数表)，通过6LoWPAN/IEEE 802.15.4接入边缘网关。
+              与HTTP/MQTT相比，CoAP报文开销仅4字节固定报头，适合NB-IoT/LoRa等低带宽场景。
+              每15个tick采集一次，反映能耗数据的中频特性(介于MQTT高频与OPC UA低频之间)。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ===== Simulation Parameters ===== */}
+      <div className="rounded-lg border border-border bg-card p-4">
+        <h3 className="text-sm font-semibold text-foreground mb-2">仿真参数</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+          {[
+            { label: '仿真周期', value: `${results.tickCount} ticks` },
+            { label: '产线数量', value: `${results.productionLines} 条` },
+            { label: '融合窗口', value: '5 ticks' },
+            { label: '协议数量', value: '4 种' },
+            { label: 'Modbus频率', value: '每tick' },
+            { label: 'MQTT频率', value: '每10 ticks' },
+            { label: 'CoAP频率', value: '每15 ticks' },
+            { label: 'OPC UA频率', value: '每50 ticks' },
+            { label: '冲突阈值', value: 'CV > 15%' },
+            { label: '目标延迟', value: 'P95 < 50ms' },
+            { label: '边缘硬件', value: 'ARM Cortex-A72' },
+            { label: '边缘内存', value: '4GB LPDDR4' },
+          ].map((param, i) => (
+            <div key={i} className="border border-border rounded p-2">
+              <p className="text-muted-foreground">{param.label}</p>
+              <p className="font-mono font-medium text-foreground">{param.value}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+```
+
+### `src/components/InfoTooltip.tsx` (35 lines)
+
+```tsx
+import { Info } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+
+interface InfoTooltipProps {
+  content: string;
+  formula?: string;
+  className?: string;
+}
+
+export function InfoTooltip({ content, formula, className }: InfoTooltipProps) {
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className={`inline-flex cursor-help text-muted-foreground hover:text-foreground transition-colors ${className ?? ''}`}>
+            <Info className="h-4 w-4" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs text-sm" side="top">
+          <p>{content}</p>
+          {formula && (
+            <p className="mt-1 font-mono text-xs text-muted-foreground border-t border-border pt-1">
+              {formula}
+            </p>
+          )}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+```
+
+### `src/components/NavLink.tsx` (28 lines)
+
+```tsx
+import { NavLink as RouterNavLink, NavLinkProps } from "react-router-dom";
+import { forwardRef } from "react";
+import { cn } from "@/lib/utils";
+
+interface NavLinkCompatProps extends Omit<NavLinkProps, "className"> {
+  className?: string;
+  activeClassName?: string;
+  pendingClassName?: string;
+}
+
+const NavLink = forwardRef<HTMLAnchorElement, NavLinkCompatProps>(
+  ({ className, activeClassName, pendingClassName, to, ...props }, ref) => {
+    return (
+      <RouterNavLink
+        ref={ref}
+        to={to}
+        className={({ isActive, isPending }) =>
+          cn(className, isActive && activeClassName, isPending && pendingClassName)
+        }
+        {...props}
+      />
+    );
+  },
+);
+
+NavLink.displayName = "NavLink";
+
+export { NavLink };
+
+```
+
+## 6. Full source — Hooks
+
+### `src/hooks/use-toast.ts` (186 lines)
+
+```ts
+import * as React from "react";
+
+import type { ToastActionElement, ToastProps } from "@/components/ui/toast";
+
+const TOAST_LIMIT = 1;
+const TOAST_REMOVE_DELAY = 1000000;
+
+type ToasterToast = ToastProps & {
+  id: string;
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  action?: ToastActionElement;
+};
+
+const actionTypes = {
+  ADD_TOAST: "ADD_TOAST",
+  UPDATE_TOAST: "UPDATE_TOAST",
+  DISMISS_TOAST: "DISMISS_TOAST",
+  REMOVE_TOAST: "REMOVE_TOAST",
+} as const;
+
+let count = 0;
+
+function genId() {
+  count = (count + 1) % Number.MAX_SAFE_INTEGER;
+  return count.toString();
+}
+
+type ActionType = typeof actionTypes;
+
+type Action =
+  | {
+      type: ActionType["ADD_TOAST"];
+      toast: ToasterToast;
+    }
+  | {
+      type: ActionType["UPDATE_TOAST"];
+      toast: Partial<ToasterToast>;
+    }
+  | {
+      type: ActionType["DISMISS_TOAST"];
+      toastId?: ToasterToast["id"];
+    }
+  | {
+      type: ActionType["REMOVE_TOAST"];
+      toastId?: ToasterToast["id"];
+    };
+
+interface State {
+  toasts: ToasterToast[];
+}
+
+const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+
+const addToRemoveQueue = (toastId: string) => {
+  if (toastTimeouts.has(toastId)) {
+    return;
+  }
+
+  const timeout = setTimeout(() => {
+    toastTimeouts.delete(toastId);
+    dispatch({
+      type: "REMOVE_TOAST",
+      toastId: toastId,
+    });
+  }, TOAST_REMOVE_DELAY);
+
+  toastTimeouts.set(toastId, timeout);
+};
+
+export const reducer = (state: State, action: Action): State => {
+  switch (action.type) {
+    case "ADD_TOAST":
+      return {
+        ...state,
+        toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
+      };
+
+    case "UPDATE_TOAST":
+      return {
+        ...state,
+        toasts: state.toasts.map((t) => (t.id === action.toast.id ? { ...t, ...action.toast } : t)),
+      };
+
+    case "DISMISS_TOAST": {
+      const { toastId } = action;
+
+      // ! Side effects ! - This could be extracted into a dismissToast() action,
+      // but I'll keep it here for simplicity
+      if (toastId) {
+        addToRemoveQueue(toastId);
+      } else {
+        state.toasts.forEach((toast) => {
+          addToRemoveQueue(toast.id);
+        });
+      }
+
+      return {
+        ...state,
+        toasts: state.toasts.map((t) =>
+          t.id === toastId || toastId === undefined
+            ? {
+                ...t,
+                open: false,
+              }
+            : t,
+        ),
+      };
+    }
+    case "REMOVE_TOAST":
+      if (action.toastId === undefined) {
+        return {
+          ...state,
+          toasts: [],
+        };
+      }
+      return {
+        ...state,
+        toasts: state.toasts.filter((t) => t.id !== action.toastId),
+      };
+  }
+};
+
+const listeners: Array<(state: State) => void> = [];
+
+let memoryState: State = { toasts: [] };
+
+function dispatch(action: Action) {
+  memoryState = reducer(memoryState, action);
+  listeners.forEach((listener) => {
+    listener(memoryState);
+  });
+}
+
+type Toast = Omit<ToasterToast, "id">;
+
+function toast({ ...props }: Toast) {
+  const id = genId();
+
+  const update = (props: ToasterToast) =>
+    dispatch({
+      type: "UPDATE_TOAST",
+      toast: { ...props, id },
+    });
+  const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id });
+
+  dispatch({
+    type: "ADD_TOAST",
+    toast: {
+      ...props,
+      id,
+      open: true,
+      onOpenChange: (open) => {
+        if (!open) dismiss();
+      },
+    },
+  });
+
+  return {
+    id: id,
+    dismiss,
+    update,
+  };
+}
+
+function useToast() {
+  const [state, setState] = React.useState<State>(memoryState);
+
+  React.useEffect(() => {
+    listeners.push(setState);
+    return () => {
+      const index = listeners.indexOf(setState);
+      if (index > -1) {
+        listeners.splice(index, 1);
+      }
+    };
+  }, [state]);
+
+  return {
+    ...state,
+    toast,
+    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
+  };
+}
+
+export { useToast, toast };
+
+```
+
+### `src/hooks/use-mobile.tsx` (19 lines)
+
+```tsx
+import * as React from "react";
+
+const MOBILE_BREAKPOINT = 768;
+
+export function useIsMobile() {
+  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined);
+
+  React.useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
+    const onChange = () => {
+      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+    };
+    mql.addEventListener("change", onChange);
+    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+
+  return !!isMobile;
+}
+
+```
+
+## 7. Full source — Backend / data layer
+
+### `src/lib/utils.ts` (6 lines)
+
+```ts
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+```
+
+## 8. Full source — Config / infra
+
+### `tailwind.config.ts` (103 lines)
+
+```ts
+import type { Config } from "tailwindcss";
+
+export default {
+  darkMode: ["class"],
+  content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
+  prefix: "",
+  theme: {
+    container: {
+      center: true,
+      padding: "2rem",
+      screens: {
+        "2xl": "1400px",
+      },
+    },
+    extend: {
+      fontFamily: {
+        sans: ["Work Sans", "system-ui", "sans-serif"],
+        mono: ["JetBrains Mono", "ui-monospace", "monospace"],
+      },
+      colors: {
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        surface: {
+          DEFAULT: "hsl(var(--surface))",
+          2: "hsl(var(--surface-2))",
+          3: "hsl(var(--surface-3))",
+        },
+        warn: "hsl(var(--warn))",
+        danger: "hsl(var(--danger))",
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+          glow: "hsl(var(--primary-glow))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+        sidebar: {
+          DEFAULT: "hsl(var(--sidebar-background))",
+          foreground: "hsl(var(--sidebar-foreground))",
+          primary: "hsl(var(--sidebar-primary))",
+          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
+          accent: "hsl(var(--sidebar-accent))",
+          "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
+          border: "hsl(var(--sidebar-border))",
+          ring: "hsl(var(--sidebar-ring))",
+        },
+      },
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
+      },
+      keyframes: {
+        "accordion-down": {
+          from: {
+            height: "0",
+          },
+          to: {
+            height: "var(--radix-accordion-content-height)",
+          },
+        },
+        "accordion-up": {
+          from: {
+            height: "var(--radix-accordion-content-height)",
+          },
+          to: {
+            height: "0",
+          },
+        },
+      },
+      animation: {
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
+      },
+    },
+  },
+  plugins: [require("tailwindcss-animate")],
+} satisfies Config;
+
+```
+
+### `vite.config.ts` (22 lines)
+
+```ts
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react-swc";
+import path from "path";
+import { componentTagger } from "lovable-tagger";
+
+// https://vitejs.dev/config/
+export default defineConfig(({ mode }) => ({
+  server: {
+    host: "::",
+    port: 8080,
+    hmr: {
+      overlay: false,
+    },
+  },
+  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+    dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
+  },
+}));
+
+```
+
+### `vitest.config.ts` (16 lines)
+
+```ts
+import { defineConfig } from "vitest/config";
+import react from "@vitejs/plugin-react-swc";
+import path from "path";
+
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: ["./src/test/setup.ts"],
+    include: ["src/**/*.{test,spec}.{ts,tsx}"],
+  },
+  resolve: {
+    alias: { "@": path.resolve(__dirname, "./src") },
+  },
+});
+
+```
+
+### `postcss.config.js` (6 lines)
+
+```js
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};
+
+```
+
+### `eslint.config.js` (26 lines)
+
+```js
+import js from "@eslint/js";
+import globals from "globals";
+import reactHooks from "eslint-plugin-react-hooks";
+import reactRefresh from "eslint-plugin-react-refresh";
+import tseslint from "typescript-eslint";
+
+export default tseslint.config(
+  { ignores: ["dist"] },
+  {
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    files: ["**/*.{ts,tsx}"],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.browser,
+    },
+    plugins: {
+      "react-hooks": reactHooks,
+      "react-refresh": reactRefresh,
+    },
+    rules: {
+      ...reactHooks.configs.recommended.rules,
+      "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+      "@typescript-eslint/no-unused-vars": "off",
+    },
+  },
+);
+
+```
+
+### `components.json` (20 lines)
+
+```json
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "default",
+  "rsc": false,
+  "tsx": true,
+  "tailwind": {
+    "config": "tailwind.config.ts",
+    "css": "src/index.css",
+    "baseColor": "slate",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  }
+}
+
+```
+
+### `tsconfig.json` (15 lines)
+
+```json
+{
+  "files": [],
+  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }],
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "noImplicitAny": false,
+    "noUnusedParameters": false,
+    "skipLibCheck": true,
+    "allowJs": true,
+    "noUnusedLocals": false,
+    "strictNullChecks": false
+  }
+}
+
+```
+
+### `tsconfig.app.json` (30 lines)
+
+```json
+{
+  "compilerOptions": {
+    "types": ["vitest/globals"],
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitAny": false,
+    "noFallthroughCasesInSwitch": false,
+
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"]
+}
+
+```
+
+### `tsconfig.node.json` (22 lines)
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["vite.config.ts"]
+}
+
+```
+
+### `package.json` (89 lines)
+
+```json
+{
+  "name": "vite_react_shadcn_ts",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:dev": "vite build --mode development",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^3.10.0",
+    "@radix-ui/react-accordion": "^1.2.11",
+    "@radix-ui/react-alert-dialog": "^1.1.14",
+    "@radix-ui/react-aspect-ratio": "^1.1.7",
+    "@radix-ui/react-avatar": "^1.1.10",
+    "@radix-ui/react-checkbox": "^1.3.2",
+    "@radix-ui/react-collapsible": "^1.1.11",
+    "@radix-ui/react-context-menu": "^2.2.15",
+    "@radix-ui/react-dialog": "^1.1.14",
+    "@radix-ui/react-dropdown-menu": "^2.1.15",
+    "@radix-ui/react-hover-card": "^1.1.14",
+    "@radix-ui/react-label": "^2.1.7",
+    "@radix-ui/react-menubar": "^1.1.15",
+    "@radix-ui/react-navigation-menu": "^1.2.13",
+    "@radix-ui/react-popover": "^1.1.14",
+    "@radix-ui/react-progress": "^1.1.7",
+    "@radix-ui/react-radio-group": "^1.3.7",
+    "@radix-ui/react-scroll-area": "^1.2.9",
+    "@radix-ui/react-select": "^2.2.5",
+    "@radix-ui/react-separator": "^1.1.7",
+    "@radix-ui/react-slider": "^1.3.5",
+    "@radix-ui/react-slot": "^1.2.3",
+    "@radix-ui/react-switch": "^1.2.5",
+    "@radix-ui/react-tabs": "^1.1.12",
+    "@radix-ui/react-toast": "^1.2.14",
+    "@radix-ui/react-toggle": "^1.1.9",
+    "@radix-ui/react-toggle-group": "^1.1.10",
+    "@radix-ui/react-tooltip": "^1.2.7",
+    "@tanstack/react-query": "^5.83.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
+    "date-fns": "^3.6.0",
+    "embla-carousel-react": "^8.6.0",
+    "input-otp": "^1.4.2",
+    "lucide-react": "^0.462.0",
+    "next-themes": "^0.3.0",
+    "react": "^18.3.1",
+    "react-day-picker": "^8.10.1",
+    "react-dom": "^18.3.1",
+    "react-hook-form": "^7.61.1",
+    "react-resizable-panels": "^2.1.9",
+    "react-router-dom": "^6.30.1",
+    "recharts": "^2.15.4",
+    "sonner": "^1.7.4",
+    "tailwind-merge": "^2.6.0",
+    "tailwindcss-animate": "^1.0.7",
+    "vaul": "^0.9.9",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.32.0",
+    "@tailwindcss/typography": "^0.5.16",
+    "@testing-library/jest-dom": "^6.6.0",
+    "@testing-library/react": "^16.0.0",
+    "@types/node": "^22.16.5",
+    "@types/react": "^18.3.23",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react-swc": "^3.11.0",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9.32.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^15.15.0",
+    "jsdom": "^20.0.3",
+    "lovable-tagger": "^1.1.13",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.38.0",
+    "vite": "^5.4.19",
+    "vitest": "^3.2.4"
+  }
+}
+
+```
+
+## 9. Public assets
+
+### `public/robots.txt` (14 lines)
+
+```text
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: *
+Allow: /
+
+```
+
+### `public/thesis-rewrite-smart-factory.md` (1409 lines)
+
+```md
+# 第2章 重写建议：实验设计、结果展示、讨论与分层架构
+
+> 本文档包含：**修改后的文本**、**分层部署架构设计**、**伪代码**、**真实Python代码**  
+> 场景聚焦：**智能工厂** (Modbus RTU + MQTT + OPC UA + 可扩展协议)
+
+---
+
+## 一、问题诊断与修改方向
+
+### 原文主要问题
+
+| 问题 | 位置 | 影响 |
+|------|------|------|
+| 实验场景过于抽象，缺乏工业落地感 | §2.6 | 读者无法判断方案的实际可行性 |
+| 表2.3指标过于理想化（10ms延迟、0.1%丢包） | §2.7 | 缺乏可信度，无工业基准对比 |
+| 混淆矩阵缺少Precision/Recall/F1分析 | 表2.1 | 无法评估各协议识别的偏差特征 |
+| 缺少分层部署架构 | 全章 | 无法体现边缘-雾-云的工业部署模式 |
+| 缺乏资源消耗分析（CPU/RAM） | §2.7 | 忽视边缘设备资源受限的核心约束 |
+| 未明确仿真vs.实际部署的边界 | §2.6-2.7 | 混淆仿真验证与实际性能声明 |
+| 缺少通用性/灵活性论证 | 全章 | 未体现协议翻译的可扩展架构 |
+
+### 修改策略
+
+1. **场景具体化**：以智能工厂产线为核心场景，涉及PLC(Modbus RTU)、传感器网关(MQTT)、MES系统(OPC UA)
+2. **指标现实化**：仿真环境下P50<20ms、P95<50ms、P99<100ms，明确声明为仿真验证
+3. **架构分层化**：设备层→边缘层→雾层→云层，体现工业部署的分级处理
+4. **通用性论证**：插件式协议适配器 + 统一中间表示(UIR) + 动态路由
+5. **智能化处理**：自适应协议识别、智能负载均衡、异常检测联动
+
+---
+
+## 二、重写：§2.6 实验设计（替换原文§2.6.1-2.6.3）
+
+### 2.6.1 智能工厂仿真场景设计
+
+本实验以典型离散制造智能工厂为仿真场景，模拟包含多种异构协议终端的工业物联网环境。场景设计遵循ISA-95（企业-控制系统集成国际标准）的层级划分，涵盖以下核心要素：
+
+**场景拓扑描述：**
+
+工厂包含3条独立产线，每条产线部署如下设备：
+- **PLC控制器**（×4台/产线）：通过Modbus RTU协议（RS-485总线，波特率9600/19200bps）上报设备运行状态、电机转速、温度等过程变量，采集周期100ms
+- **环境传感器网关**（×2台/产线）：汇聚温湿度、振动、烟雾等传感器数据，通过MQTT协议（QoS 1）发布至边缘节点，上报周期1s
+- **MES接口服务器**（×1台/产线）：通过OPC UA协议提供工单信息、质量参数和产线状态的订阅服务，事件驱动+周期轮询（5s）混合模式
+- **AGV调度终端**（×2台/工厂）：通过MQTT协议上报位置和任务状态
+
+总计仿真数据点：每条产线约 **80个数据点**，全厂 **240+数据点**，涵盖3种核心工业协议。
+
+**关键行业难点建模：**
+
+| 难点 | 仿真建模方式 | 技术挑战 |
+|------|------------|---------|
+| 时钟不同步 | PLC本地时钟偏移±50ms，MQTT使用NTP同步 | 跨协议时间对齐 |
+| 协议语义差异 | Modbus寄存器地址→物理量映射、OPC UA节点ID→语义标签 | 统一信息模型(UIR) |
+| 网络抖动 | RS-485总线冲突模拟、MQTT网络延迟N(5,2²)ms | 实时性保障 |
+| 突发流量 | 产线故障时报警报文激增（正常5x） | 流量整形与优先级调度 |
+| 协议动态扩展 | 运行时注册新协议适配器（如BACnet） | 插件式架构验证 |
+
+**仿真声明：** 本实验基于Python仿真环境构建，数据生成严格遵循各协议规范（Modbus RTU帧结构依据Modicon PI-MBUS-300规范，MQTT报文符合OASIS MQTT v3.1.1标准，OPC UA基于IEC 62541数据模型）。仿真结果反映算法层面的理论性能，实际部署性能将受硬件平台、网络拓扑和操作系统实时性等因素影响。
+
+### 2.6.2 分层部署架构设计
+
+本系统采用 **"设备层-边缘层-雾层-云层"** 四层架构，各层职责明确，协同实现协议翻译与融合的分级处理。
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    云层 (Cloud Layer)                     │
+│  ┌──────────┐ ┌───────────┐ ┌──────────────────────┐    │
+│  │ 全局融合  │ │ 模型训练   │ │  知识库 & 协议本体    │    │
+│  │ 引擎     │ │ (联邦聚合) │ │  (语义映射矩阵)      │    │
+│  └──────────┘ └───────────┘ └──────────────────────┘    │
+├─────────────────────────────────────────────────────────┤
+│                    雾层 (Fog Layer)                       │
+│  ┌───────────────────────────────────────────────┐      │
+│  │        跨产线融合 & 全局调度优化                  │      │
+│  │  - 多产线数据关联分析                            │      │
+│  │  - 强化学习动态调度策略                          │      │
+│  │  - 联邦学习本地模型聚合                          │      │
+│  └───────────────────────────────────────────────┘      │
+├─────────────────────────────────────────────────────────┤
+│                   边缘层 (Edge Layer)                     │
+│  ┌────────────────────────────────────────────────┐     │
+│  │          边缘网关 (每产线1台)                     │     │
+│  │  ┌──────────┐ ┌──────────┐ ┌───────────────┐  │     │
+│  │  │协议适配器│ │ UIR转换  │ │ 实时融合引擎   │  │     │
+│  │  │(插件式)  │ │ 引擎     │ │ (时间窗对齐)   │  │     │
+│  │  └──────────┘ └──────────┘ └───────────────┘  │     │
+│  │  ┌──────────┐ ┌──────────┐ ┌───────────────┐  │     │
+│  │  │异常检测  │ │流量整形  │ │ 本地缓存队列   │  │     │
+│  │  └──────────┘ └──────────┘ └───────────────┘  │     │
+│  └────────────────────────────────────────────────┘     │
+├─────────────────────────────────────────────────────────┤
+│                   设备层 (Device Layer)                   │
+│  ┌─────────┐ ┌──────────┐ ┌────────┐ ┌──────────┐     │
+│  │ PLC×4   │ │ 传感器   │ │ MES    │ │ AGV×2    │     │
+│  │Modbus   │ │ 网关×2   │ │ OPC UA │ │ MQTT     │     │
+│  │RTU      │ │ MQTT     │ │        │ │          │     │
+│  └─────────┘ └──────────┘ └────────┘ └──────────┘     │
+└─────────────────────────────────────────────────────────┘
+```
+
+**各层核心职责：**
+
+| 层级 | 延迟要求 | 核心功能 | 部署位置 |
+|------|---------|---------|---------|
+| 设备层 | - | 数据采集、协议原生通信 | 产线现场 |
+| 边缘层 | P95 < 50ms | 协议翻译、UIR转换、实时融合、异常检测 | 产线旁工控机 |
+| 雾层 | P95 < 200ms | 跨产线关联、调度优化、模型增量更新 | 厂区机房 |
+| 云层 | 秒级 | 全局模型训练、知识库管理、历史分析 | 远程数据中心 |
+
+**设计原则——通用性与灵活性：**
+
+1. **插件式协议适配器**：每种协议对应一个独立适配器模块，实现 `IProtocolAdapter` 接口，支持运行时热插拔。新增协议仅需实现解析和序列化两个方法，无需修改核心引擎。
+2. **统一中间表示(UIR)**：所有协议数据在边缘层统一转换为UIR格式，解耦上层融合逻辑与底层协议细节。UIR包含：标准化时间戳、设备标识、语义标签、数值、质量码、来源协议标记。
+3. **动态路由与负载均衡**：根据数据优先级（报警>控制>监测）和网络状态，智能选择处理路径（本地融合 vs. 上送雾层）。
+
+### 2.6.3 统一中间表示(UIR)设计
+
+UIR是实现协议翻译通用性的关键抽象层，其结构设计如下：
+
+```json
+{
+  "uir_version": "1.0",
+  "timestamp_utc": "2025-03-07T08:30:00.123Z",
+  "source": {
+    "device_id": "PLC-L1-03",
+    "protocol": "modbus_rtu",
+    "adapter_version": "2.1.0",
+    "raw_ref": "hex:010300000002c40b"
+  },
+  "semantic": {
+    "entity": "motor",
+    "entity_id": "M-L1-03-A",
+    "measurement_type": "temperature",
+    "value": 65.3,
+    "unit": "celsius",
+    "quality": "good",
+    "data_type": "float32"
+  },
+  "context": {
+    "production_line": "L1",
+    "zone": "assembly",
+    "priority": "normal",
+    "ttl_ms": 5000
+  }
+}
+```
+
+### 2.6.4 实验参数配置
+
+| 参数类别 | 参数名 | 设置值 | 说明 |
+|---------|--------|-------|------|
+| Modbus RTU | 采集周期 | 100ms | PLC过程变量 |
+| Modbus RTU | 波特率 | 19200bps | RS-485总线 |
+| Modbus RTU | 数据点/PLC | 20个寄存器 | 温度、转速、电流等 |
+| MQTT | 上报周期 | 1000ms | 环境传感器 |
+| MQTT | QoS | 1 | 至少一次投递 |
+| MQTT | 主题层级 | factory/L{n}/zone{m}/type | 结构化主题 |
+| OPC UA | 订阅周期 | 5000ms | MES工单数据 |
+| OPC UA | 事件通知 | 实时 | 质量异常事件 |
+| 融合窗口 | 时间窗宽度 | 500ms | 边缘层实时融合 |
+| 融合窗口 | 滑动步长 | 100ms | 重叠率80% |
+| 仿真规模 | 数据量 | 72000条 | 20小时模拟运行 |
+| 网络模型 | MQTT延迟 | N(5, 2²) ms | 正态分布 |
+| 网络模型 | RS-485冲突率 | 2% | 总线仲裁 |
+
+### 2.6.5 实验方法设计
+
+设计三组对比实验，评估协议翻译与融合系统的核心性能：
+
+**实验一：协议识别与翻译准确性**
+- 目标：验证插件式协议适配器对Modbus RTU、MQTT、OPC UA的识别与翻译正确性
+- 方法：600条混合协议报文（每协议200条），包含正常报文(90%)和异常/畸形报文(10%)
+- 基线对比：传统规则匹配 vs. 本文多特征融合识别方法
+- 指标：Precision、Recall、F1-score（按协议类型分别计算）
+
+**实验二：实时性与吞吐量**
+- 目标：验证分层架构在不同负载下的端到端延迟
+- 方法：渐进式加压（50→100→200→300数据点/秒），持续10分钟/档位
+- 基线对比：单层集中式处理 vs. 本文分层架构
+- 指标：延迟分布（P50/P95/P99）、吞吐量、CPU/RAM占用率
+
+**实验三：通用性与可扩展性**
+- 目标：验证新增协议适配器的热插拔能力和对融合性能的影响
+- 方法：运行时动态注册BACnet协议适配器，观察系统行为
+- 指标：注册延迟、融合精度变化、系统稳定性
+
+---
+
+## 三、重写：分层架构核心代码
+
+### 3.1 伪代码：边缘层协议翻译与融合流水线
+
+```
+Algorithm: EdgeLayerPipeline
+Input: raw_messages (来自设备层的原始协议报文流)
+Output: fused_uir_records (融合后的UIR记录)
+
+// ===== 第一阶段：协议识别与适配 =====
+PROCEDURE ProtocolAdapt(raw_msg):
+    fingerprint ← ExtractFingerprint(raw_msg)  // 提取报文指纹特征
+    
+    // 快速路径：已知协议签名匹配
+    IF fingerprint IN known_signatures_cache THEN
+        adapter ← GetCachedAdapter(fingerprint)
+    ELSE
+        // 慢速路径：多特征融合识别
+        entropy ← CalculateShannonEntropy(raw_msg)
+        byte_dist ← ByteFrequencyDistribution(raw_msg)
+        struct_feat ← StructuralFeatures(raw_msg)  // 帧长、固定头等
+        
+        protocol_id ← ClassifyProtocol(entropy, byte_dist, struct_feat)
+        adapter ← ProtocolAdapterRegistry.Get(protocol_id)
+        
+        IF adapter IS NULL THEN
+            adapter ← FallbackBinaryAdapter()  // 降级：未知协议通用解析
+            LOG_WARNING("Unknown protocol, using fallback adapter")
+        END IF
+        
+        UpdateSignatureCache(fingerprint, adapter)
+    END IF
+    
+    RETURN adapter.ParseToUIR(raw_msg)
+
+// ===== 第二阶段：时间窗融合 =====
+PROCEDURE TimeWindowFusion(uir_buffer, window_size=500ms, stride=100ms):
+    windows ← SlidingWindow(uir_buffer, window_size, stride)
+    
+    FOR EACH window IN windows DO
+        // 按语义实体分组
+        entity_groups ← GroupByEntityID(window.records)
+        
+        FOR EACH entity_id, records IN entity_groups DO
+            IF |records| == 1 THEN
+                EMIT records[0]  // 单源直接输出
+                CONTINUE
+            END IF
+            
+            // 多源融合
+            aligned ← TemporalAlign(records, reference_clock=NTP)
+            
+            // 冲突检测与消解
+            IF HasConflict(aligned) THEN
+                resolved ← ConflictResolve(aligned, strategy="confidence_weighted")
+                // 置信度 = f(数据质量码, 传感器精度, 时间新鲜度)
+            ELSE
+                resolved ← aligned
+            END IF
+            
+            fused ← WeightedAggregate(resolved)
+            fused.quality ← MIN(r.quality FOR r IN resolved)  // 质量码取最差
+            EMIT fused
+        END FOR
+    END FOR
+
+// ===== 第三阶段：智能路由 =====
+PROCEDURE IntelligentRoute(fused_record):
+    IF fused_record.priority == "alarm" THEN
+        SendToFogLayer(fused_record, urgent=TRUE)
+        TriggerLocalAlert(fused_record)
+    ELSE IF fused_record.priority == "control" THEN
+        SendToLocalActuator(fused_record)
+        BufferForFogLayer(fused_record)
+    ELSE
+        BufferForBatchUpload(fused_record, batch_interval=5s)
+    END IF
+
+// ===== 主循环 =====
+PROCEDURE Main():
+    adapter_registry ← InitializeAdapterRegistry()
+    adapter_registry.Register("modbus_rtu", ModbusRTUAdapter())
+    adapter_registry.Register("mqtt", MQTTAdapter())
+    adapter_registry.Register("opcua", OPCUAAdapter())
+    
+    uir_buffer ← TimeSortedBuffer(max_delay=1000ms)
+    
+    LOOP:
+        raw_msg ← ReceiveFromDeviceLayer()
+        uir_record ← ProtocolAdapt(raw_msg)
+        uir_buffer.Insert(uir_record)
+        
+        IF uir_buffer.WindowReady() THEN
+            fused_records ← TimeWindowFusion(uir_buffer)
+            FOR EACH record IN fused_records DO
+                IntelligentRoute(record)
+            END FOR
+        END IF
+```
+
+### 3.2 真实Python代码：协议适配器框架与仿真
+
+```python
+"""
+smart_factory_fusion.py
+智能工厂多协议翻译与融合仿真系统
+支持协议: Modbus RTU, MQTT, OPC UA (插件式可扩展)
+"""
+
+import struct
+import time
+import json
+import hashlib
+import random
+import math
+import logging
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field, asdict
+from typing import Dict, List, Optional, Any, Tuple
+from enum import Enum
+from collections import defaultdict
+from datetime import datetime, timezone
+import statistics
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("SmartFactoryFusion")
+
+
+# ============================================================
+# 第一部分：统一中间表示 (UIR) 定义
+# ============================================================
+
+class Priority(Enum):
+    ALARM = 0
+    CONTROL = 1
+    MONITOR = 2
+    DIAGNOSTIC = 3
+
+
+class QualityCode(Enum):
+    GOOD = "good"
+    UNCERTAIN = "uncertain"
+    BAD = "bad"
+    STALE = "stale"  # 数据超时
+
+
+@dataclass
+class UIRRecord:
+    """统一中间表示记录 - 所有协议翻译的目标格式"""
+    timestamp_utc: float  # Unix timestamp (ms精度)
+    device_id: str
+    protocol: str
+    entity_id: str  # 语义实体标识 (如 "Motor-L1-03")
+    measurement_type: str  # 测量类型 (如 "temperature")
+    value: float
+    unit: str
+    quality: QualityCode = QualityCode.GOOD
+    priority: Priority = Priority.MONITOR
+    production_line: str = ""
+    zone: str = ""
+    raw_hex: str = ""  # 原始报文引用
+    adapter_version: str = "1.0"
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict:
+        d = asdict(self)
+        d['quality'] = self.quality.value
+        d['priority'] = self.priority.name
+        return d
+
+
+# ============================================================
+# 第二部分：插件式协议适配器框架
+# ============================================================
+
+class IProtocolAdapter(ABC):
+    """协议适配器接口 - 所有协议适配器必须实现此接口"""
+
+    @abstractmethod
+    def get_protocol_name(self) -> str:
+        """返回协议名称标识"""
+        pass
+
+    @abstractmethod
+    def detect(self, raw_bytes: bytes) -> float:
+        """
+        检测原始报文是否属于本协议
+        返回: 置信度 [0.0, 1.0]
+        """
+        pass
+
+    @abstractmethod
+    def parse_to_uir(self, raw_bytes: bytes, device_context: Dict) -> List[UIRRecord]:
+        """
+        将原始报文解析并翻译为UIR格式
+        Args:
+            raw_bytes: 原始协议报文
+            device_context: 设备上下文信息(产线、区域等)
+        Returns:
+            UIR记录列表(一条报文可能包含多个测量值)
+        """
+        pass
+
+    @abstractmethod
+    def get_signature(self) -> Dict:
+        """返回协议签名特征,用于快速匹配缓存"""
+        pass
+
+
+class ModbusRTUAdapter(IProtocolAdapter):
+    """Modbus RTU协议适配器"""
+
+    # Modbus寄存器地址到语义的映射表(可配置)
+    REGISTER_SEMANTIC_MAP = {
+        40001: ("temperature", "celsius", "motor_temp"),
+        40002: ("speed", "rpm", "motor_speed"),
+        40003: ("current", "ampere", "motor_current"),
+        40004: ("vibration", "mm_s", "vibration_rms"),
+        40005: ("pressure", "bar", "line_pressure"),
+    }
+
+    def get_protocol_name(self) -> str:
+        return "modbus_rtu"
+
+    def detect(self, raw_bytes: bytes) -> float:
+        """
+        Modbus RTU检测逻辑:
+        1. 最小长度5字节(地址1+功能码1+数据N+CRC2)
+        2. 功能码范围检查
+        3. CRC16校验
+        """
+        if len(raw_bytes) < 5:
+            return 0.0
+
+        confidence = 0.0
+        func_code = raw_bytes[1]
+
+        # 常见功能码: 03(读保持寄存器), 06(写单寄存器), 16(写多寄存器)
+        if func_code in (0x03, 0x06, 0x10, 0x01, 0x02, 0x04, 0x05):
+            confidence += 0.4
+
+        # CRC校验
+        if len(raw_bytes) >= 4:
+            crc_calc = self._crc16(raw_bytes[:-2])
+            crc_recv = struct.unpack('<H', raw_bytes[-2:])[0]
+            if crc_calc == crc_recv:
+                confidence += 0.5
+
+        # 地址范围 1-247
+        if 1 <= raw_bytes[0] <= 247:
+            confidence += 0.1
+
+        return min(confidence, 1.0)
+
+    def parse_to_uir(self, raw_bytes: bytes, device_context: Dict) -> List[UIRRecord]:
+        records = []
+        slave_addr = raw_bytes[0]
+        func_code = raw_bytes[1]
+
+        if func_code == 0x03:  # 读保持寄存器响应
+            byte_count = raw_bytes[2]
+            num_registers = byte_count // 2
+
+            for i in range(num_registers):
+                offset = 3 + i * 2
+                reg_value = struct.unpack('>H', raw_bytes[offset:offset + 2])[0]
+
+                # 查找寄存器语义映射
+                reg_addr = device_context.get('start_register', 40001) + i
+                semantic = self.REGISTER_SEMANTIC_MAP.get(reg_addr)
+
+                if semantic:
+                    meas_type, unit, entity_suffix = semantic
+                    # Modbus整数→实际值转换(除以10恢复精度)
+                    actual_value = reg_value / 10.0 if meas_type in ('temperature', 'pressure') else float(reg_value)
+
+                    record = UIRRecord(
+                        timestamp_utc=time.time() * 1000,
+                        device_id=f"PLC-{device_context.get('line', 'L1')}-{slave_addr:02d}",
+                        protocol="modbus_rtu",
+                        entity_id=f"{entity_suffix}-{device_context.get('line', 'L1')}-{slave_addr:02d}",
+                        measurement_type=meas_type,
+                        value=actual_value,
+                        unit=unit,
+                        quality=QualityCode.GOOD,
+                        priority=Priority.CONTROL if meas_type == 'temperature' else Priority.MONITOR,
+                        production_line=device_context.get('line', 'L1'),
+                        zone=device_context.get('zone', 'assembly'),
+                        raw_hex=raw_bytes.hex(),
+                    )
+                    records.append(record)
+
+        return records
+
+    def get_signature(self) -> Dict:
+        return {"min_len": 5, "func_codes": [0x03, 0x06, 0x10], "has_crc16": True}
+
+    @staticmethod
+    def _crc16(data: bytes) -> int:
+        crc = 0xFFFF
+        for byte in data:
+            crc ^= byte
+            for _ in range(8):
+                if crc & 0x0001:
+                    crc = (crc >> 1) ^ 0xA001
+                else:
+                    crc >>= 1
+        return crc
+
+
+class MQTTAdapter(IProtocolAdapter):
+    """MQTT协议适配器"""
+
+    # MQTT主题→语义映射规则
+    TOPIC_PATTERNS = {
+        r"factory/L(\d+)/zone(\w+)/temperature": ("temperature", "celsius"),
+        r"factory/L(\d+)/zone(\w+)/humidity": ("humidity", "percent"),
+        r"factory/L(\d+)/zone(\w+)/vibration": ("vibration", "mm_s"),
+        r"factory/L(\d+)/zone(\w+)/smoke": ("smoke_density", "ppm"),
+        r"factory/agv/(\w+)/position": ("position", "meters"),
+    }
+
+    def get_protocol_name(self) -> str:
+        return "mqtt"
+
+    def detect(self, raw_bytes: bytes) -> float:
+        if len(raw_bytes) < 2:
+            return 0.0
+
+        confidence = 0.0
+        packet_type = (raw_bytes[0] >> 4) & 0x0F
+
+        # MQTT控制报文类型: CONNECT(1)~DISCONNECT(14)
+        if 1 <= packet_type <= 14:
+            confidence += 0.4
+
+        # 检查剩余长度编码合法性(变长编码)
+        if len(raw_bytes) >= 2:
+            remaining_len, consumed = self._decode_remaining_length(raw_bytes[1:])
+            if consumed > 0 and remaining_len >= 0:
+                expected_total = 1 + consumed + remaining_len
+                if abs(len(raw_bytes) - expected_total) <= 2:
+                    confidence += 0.5
+
+        # PUBLISH报文(类型3)的主题检查
+        if packet_type == 3 and len(raw_bytes) > 4:
+            topic_len = struct.unpack('>H', raw_bytes[2:4])[0]
+            if 1 <= topic_len <= 256:
+                confidence += 0.1
+
+        return min(confidence, 1.0)
+
+    def parse_to_uir(self, raw_bytes: bytes, device_context: Dict) -> List[UIRRecord]:
+        records = []
+        packet_type = (raw_bytes[0] >> 4) & 0x0F
+
+        if packet_type != 3:  # 仅处理PUBLISH报文
+            return records
+
+        remaining_len, consumed = self._decode_remaining_length(raw_bytes[1:])
+        offset = 1 + consumed
+
+        # 提取主题
+        topic_len = struct.unpack('>H', raw_bytes[offset:offset + 2])[0]
+        offset += 2
+        topic = raw_bytes[offset:offset + topic_len].decode('utf-8', errors='replace')
+        offset += topic_len
+
+        # 提取QoS
+        qos = (raw_bytes[0] >> 1) & 0x03
+        if qos > 0:
+            offset += 2  # 跳过报文标识符
+
+        # 提取载荷
+        payload_bytes = raw_bytes[offset:]
+        try:
+            payload = json.loads(payload_bytes.decode('utf-8'))
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            payload = {"raw_value": payload_bytes.hex()}
+
+        # 主题→语义映射
+        import re
+        for pattern, (meas_type, unit) in self.TOPIC_PATTERNS.items():
+            match = re.match(pattern, topic)
+            if match:
+                groups = match.groups()
+                line = f"L{groups[0]}" if groups else device_context.get('line', 'L1')
+
+                value = payload.get('value', payload.get('temp', payload.get('v', 0.0)))
+
+                record = UIRRecord(
+                    timestamp_utc=payload.get('ts', time.time() * 1000),
+                    device_id=payload.get('device_id', f"SENSOR-{line}"),
+                    protocol="mqtt",
+                    entity_id=f"{meas_type}-{line}-{groups[1] if len(groups) > 1 else 'default'}",
+                    measurement_type=meas_type,
+                    value=float(value),
+                    unit=unit,
+                    quality=QualityCode.GOOD,
+                    priority=Priority.ALARM if meas_type == "smoke_density" else Priority.MONITOR,
+                    production_line=line,
+                    zone=groups[1] if len(groups) > 1 else "",
+                    raw_hex=raw_bytes.hex(),
+                    metadata={"topic": topic, "qos": qos}
+                )
+                records.append(record)
+                break
+
+        return records
+
+    def get_signature(self) -> Dict:
+        return {"header_mask": 0xF0, "valid_types": list(range(1, 15))}
+
+    @staticmethod
+    def _decode_remaining_length(data: bytes) -> Tuple[int, int]:
+        multiplier = 1
+        value = 0
+        index = 0
+        while index < len(data) and index < 4:
+            encoded_byte = data[index]
+            value += (encoded_byte & 0x7F) * multiplier
+            if (encoded_byte & 0x80) == 0:
+                return value, index + 1
+            multiplier *= 128
+            index += 1
+        return -1, 0
+
+
+class OPCUAAdapter(IProtocolAdapter):
+    """OPC UA协议适配器(Binary编码)"""
+
+    # OPC UA服务类型
+    OPCUA_MSG_TYPES = {b'HEL', b'ACK', b'OPN', b'CLO', b'MSG'}
+
+    def get_protocol_name(self) -> str:
+        return "opcua"
+
+    def detect(self, raw_bytes: bytes) -> float:
+        if len(raw_bytes) < 8:
+            return 0.0
+
+        confidence = 0.0
+
+        # OPC UA Binary: 前3字节为消息类型
+        msg_type = raw_bytes[:3]
+        if msg_type in self.OPCUA_MSG_TYPES:
+            confidence += 0.6
+
+        # 第4字节为'F'(Final)或'C'(intermediate chunk)
+        if len(raw_bytes) > 3 and raw_bytes[3:4] in (b'F', b'C', b'A'):
+            confidence += 0.2
+
+        # 消息长度字段(小端序)
+        if len(raw_bytes) >= 8:
+            msg_len = struct.unpack('<I', raw_bytes[4:8])[0]
+            if abs(msg_len - len(raw_bytes)) <= 4:
+                confidence += 0.2
+
+        return min(confidence, 1.0)
+
+    def parse_to_uir(self, raw_bytes: bytes, device_context: Dict) -> List[UIRRecord]:
+        records = []
+        msg_type = raw_bytes[:3]
+
+        if msg_type != b'MSG':
+            return records
+
+        # 简化解析: 提取OPC UA数据变更通知
+        # 实际应用中需完整解析OPC UA Binary编码
+        # 此处模拟提取节点值
+        try:
+            # 查找JSON载荷(仿真简化)
+            payload_start = raw_bytes.find(b'{')
+            if payload_start >= 0:
+                payload = json.loads(raw_bytes[payload_start:].decode('utf-8'))
+                node_id = payload.get('node_id', 'ns=2;i=1001')
+                value = payload.get('value', 0.0)
+                status = payload.get('status', 'Good')
+
+                # OPC UA节点ID→语义映射
+                node_semantic = device_context.get('node_map', {}).get(node_id, {
+                    'type': 'unknown', 'unit': 'unknown', 'entity': 'unknown'
+                })
+
+                record = UIRRecord(
+                    timestamp_utc=payload.get('server_timestamp', time.time() * 1000),
+                    device_id=f"MES-{device_context.get('line', 'L1')}",
+                    protocol="opcua",
+                    entity_id=f"{node_semantic['entity']}-{device_context.get('line', 'L1')}",
+                    measurement_type=node_semantic['type'],
+                    value=float(value),
+                    unit=node_semantic['unit'],
+                    quality=QualityCode.GOOD if status == 'Good' else QualityCode.UNCERTAIN,
+                    priority=Priority.CONTROL,
+                    production_line=device_context.get('line', 'L1'),
+                    zone="mes",
+                    raw_hex=raw_bytes.hex(),
+                    metadata={"node_id": node_id, "opcua_status": status}
+                )
+                records.append(record)
+        except Exception as e:
+            logger.warning(f"OPC UA parse error: {e}")
+
+        return records
+
+    def get_signature(self) -> Dict:
+        return {"header_prefix": ["HEL", "ACK", "OPN", "CLO", "MSG"], "chunk_types": ["F", "C", "A"]}
+
+
+# ============================================================
+# 第三部分：协议适配器注册表(支持热插拔)
+# ============================================================
+
+class ProtocolAdapterRegistry:
+    """协议适配器注册表 - 支持运行时动态注册/注销"""
+
+    def __init__(self):
+        self._adapters: Dict[str, IProtocolAdapter] = {}
+        self._signature_cache: Dict[str, str] = {}  # fingerprint → protocol_name
+        self._detection_stats: Dict[str, int] = defaultdict(int)
+
+    def register(self, adapter: IProtocolAdapter) -> None:
+        name = adapter.get_protocol_name()
+        self._adapters[name] = adapter
+        logger.info(f"Protocol adapter registered: {name}")
+
+    def unregister(self, protocol_name: str) -> None:
+        if protocol_name in self._adapters:
+            del self._adapters[protocol_name]
+            # 清理相关缓存
+            self._signature_cache = {
+                k: v for k, v in self._signature_cache.items()
+                if v != protocol_name
+            }
+            logger.info(f"Protocol adapter unregistered: {protocol_name}")
+
+    def detect_and_adapt(self, raw_bytes: bytes, device_context: Dict) -> List[UIRRecord]:
+        """
+        自动检测协议并翻译为UIR
+        采用两级检测策略：缓存快速匹配 → 全量检测
+        """
+        # 第一级：签名缓存快速匹配
+        fingerprint = hashlib.md5(raw_bytes[:min(16, len(raw_bytes))]).hexdigest()[:8]
+        if fingerprint in self._signature_cache:
+            protocol_name = self._signature_cache[fingerprint]
+            adapter = self._adapters.get(protocol_name)
+            if adapter:
+                self._detection_stats[protocol_name] += 1
+                return adapter.parse_to_uir(raw_bytes, device_context)
+
+        # 第二级：全量检测
+        best_adapter = None
+        best_confidence = 0.0
+
+        for name, adapter in self._adapters.items():
+            try:
+                confidence = adapter.detect(raw_bytes)
+                if confidence > best_confidence:
+                    best_confidence = confidence
+                    best_adapter = adapter
+            except Exception as e:
+                logger.warning(f"Detection error for {name}: {e}")
+
+        if best_adapter and best_confidence >= 0.6:
+            # 更新缓存
+            self._signature_cache[fingerprint] = best_adapter.get_protocol_name()
+            self._detection_stats[best_adapter.get_protocol_name()] += 1
+            return best_adapter.parse_to_uir(raw_bytes, device_context)
+
+        logger.warning(f"Low confidence detection ({best_confidence:.2f}), using fallback")
+        return []
+
+    def get_stats(self) -> Dict:
+        return dict(self._detection_stats)
+
+    def list_adapters(self) -> List[str]:
+        return list(self._adapters.keys())
+
+
+# ============================================================
+# 第四部分：边缘层实时融合引擎
+# ============================================================
+
+class EdgeFusionEngine:
+    """边缘层实时融合引擎 - 时间窗对齐 + 冲突消解 + 加权聚合"""
+
+    def __init__(self, window_size_ms: float = 500, stride_ms: float = 100):
+        self.window_size_ms = window_size_ms
+        self.stride_ms = stride_ms
+        self._buffer: List[UIRRecord] = []
+        self._fusion_count = 0
+        self._conflict_count = 0
+
+    def ingest(self, record: UIRRecord) -> None:
+        self._buffer.append(record)
+
+    def flush_window(self) -> List[UIRRecord]:
+        """执行一次融合窗口处理"""
+        if not self._buffer:
+            return []
+
+        now = time.time() * 1000
+        # 筛选窗口内记录
+        window_start = now - self.window_size_ms
+        window_records = [r for r in self._buffer if r.timestamp_utc >= window_start]
+
+        # 清理过期记录
+        self._buffer = [r for r in self._buffer if r.timestamp_utc >= window_start - self.stride_ms]
+
+        if not window_records:
+            return []
+
+        # 按语义实体分组
+        entity_groups: Dict[str, List[UIRRecord]] = defaultdict(list)
+        for record in window_records:
+            key = f"{record.entity_id}:{record.measurement_type}"
+            entity_groups[key].append(record)
+
+        fused_records = []
+        for key, records in entity_groups.items():
+            if len(records) == 1:
+                fused_records.append(records[0])
+            else:
+                fused = self._fuse_records(records)
+                if fused:
+                    fused_records.append(fused)
+
+        return fused_records
+
+    def _fuse_records(self, records: List[UIRRecord]) -> Optional[UIRRecord]:
+        """多源数据融合"""
+        self._fusion_count += 1
+
+        values = [r.value for r in records]
+        timestamps = [r.timestamp_utc for r in records]
+
+        # 冲突检测：值偏差超过阈值
+        if len(values) >= 2:
+            mean_val = statistics.mean(values)
+            std_val = statistics.stdev(values) if len(values) > 1 else 0
+            cv = std_val / abs(mean_val) if mean_val != 0 else 0  # 变异系数
+
+            if cv > 0.15:  # 变异系数>15%认为存在冲突
+                self._conflict_count += 1
+                # 置信度加权融合：时间越新权重越高，质量越好权重越高
+                weights = []
+                for r in records:
+                    time_weight = 1.0 / (1.0 + (max(timestamps) - r.timestamp_utc) / 1000)
+                    quality_weight = 1.0 if r.quality == QualityCode.GOOD else 0.5
+                    weights.append(time_weight * quality_weight)
+
+                total_weight = sum(weights)
+                fused_value = sum(v * w for v, w in zip(values, weights)) / total_weight
+            else:
+                fused_value = statistics.mean(values)
+        else:
+            fused_value = values[0]
+
+        # 构造融合记录
+        base = records[0]
+        return UIRRecord(
+            timestamp_utc=max(timestamps),
+            device_id=base.device_id,
+            protocol="fused",
+            entity_id=base.entity_id,
+            measurement_type=base.measurement_type,
+            value=round(fused_value, 4),
+            unit=base.unit,
+            quality=min((r.quality for r in records), key=lambda q: q.value),
+            priority=min((r.priority for r in records), key=lambda p: p.value),
+            production_line=base.production_line,
+            zone=base.zone,
+            metadata={
+                "source_count": len(records),
+                "source_protocols": list(set(r.protocol for r in records)),
+                "value_std": round(statistics.stdev(values), 4) if len(values) > 1 else 0,
+                "conflict_detected": self._conflict_count > 0
+            }
+        )
+
+    def get_stats(self) -> Dict:
+        return {
+            "total_fusions": self._fusion_count,
+            "conflict_resolutions": self._conflict_count,
+            "buffer_size": len(self._buffer)
+        }
+
+
+# ============================================================
+# 第五部分：智能工厂仿真数据生成器
+# ============================================================
+
+class SmartFactorySimulator:
+    """智能工厂仿真数据生成器"""
+
+    def __init__(self, num_lines: int = 3, num_plc_per_line: int = 4):
+        self.num_lines = num_lines
+        self.num_plc_per_line = num_plc_per_line
+        self._tick = 0
+
+    def generate_modbus_rtu_packet(self, slave_addr: int, registers: Dict[int, float]) -> bytes:
+        """生成符合规范的Modbus RTU响应帧"""
+        func_code = 0x03
+        num_regs = len(registers)
+        byte_count = num_regs * 2
+
+        data = struct.pack('BB', slave_addr, func_code)
+        data += struct.pack('B', byte_count)
+
+        for addr in sorted(registers.keys()):
+            value = registers[addr]
+            # 浮点→整数编码(×10保留1位小数)
+            int_value = int(value * 10) & 0xFFFF
+            data += struct.pack('>H', int_value)
+
+        # 添加CRC16
+        crc = ModbusRTUAdapter._crc16(data)
+        data += struct.pack('<H', crc)
+
+        return data
+
+    def generate_mqtt_publish(self, topic: str, payload: Dict) -> bytes:
+        """生成MQTT PUBLISH报文"""
+        topic_bytes = topic.encode('utf-8')
+        payload_bytes = json.dumps(payload).encode('utf-8')
+
+        # Fixed header: PUBLISH, QoS 1
+        packet_type = 0x32  # PUBLISH + QoS 1
+        remaining = 2 + len(topic_bytes) + 2 + len(payload_bytes)  # +2 for packet id
+
+        header = bytes([packet_type])
+        # 变长编码
+        while remaining > 0:
+            encoded_byte = remaining % 128
+            remaining //= 128
+            if remaining > 0:
+                encoded_byte |= 0x80
+            header += bytes([encoded_byte])
+
+        # Variable header
+        variable = struct.pack('>H', len(topic_bytes)) + topic_bytes
+        variable += struct.pack('>H', random.randint(1, 65535))  # Packet ID
+
+        return header + variable + payload_bytes
+
+    def generate_opcua_msg(self, node_id: str, value: float, status: str = "Good") -> bytes:
+        """生成简化的OPC UA MSG报文"""
+        payload = json.dumps({
+            "node_id": node_id,
+            "value": value,
+            "status": status,
+            "server_timestamp": time.time() * 1000
+        }).encode('utf-8')
+
+        # OPC UA Binary header
+        msg_type = b'MSG'
+        chunk_type = b'F'
+        msg_len = 8 + len(payload)
+
+        header = msg_type + chunk_type + struct.pack('<I', msg_len)
+        return header + payload
+
+    def generate_tick(self) -> List[Tuple[bytes, Dict]]:
+        """生成一个时间步的所有仿真数据"""
+        self._tick += 1
+        messages = []
+
+        for line_idx in range(1, self.num_lines + 1):
+            line_id = f"L{line_idx}"
+
+            # PLC Modbus RTU (每100ms采集，此处模拟每tick)
+            if self._tick % 1 == 0:  # 简化：每tick生成
+                for plc_idx in range(1, self.num_plc_per_line + 1):
+                    registers = {
+                        40001: 25.0 + random.gauss(0, 3) + plc_idx * 5,  # 温度
+                        40002: 1500 + random.gauss(0, 50),  # 转速
+                        40003: 5.0 + random.gauss(0, 0.5),  # 电流
+                    }
+                    # 模拟偶发异常(5%概率)
+                    if random.random() < 0.05:
+                        registers[40001] += random.uniform(20, 40)  # 温度突变
+
+                    packet = self.generate_modbus_rtu_packet(plc_idx, registers)
+                    context = {
+                        'line': line_id, 'zone': 'assembly',
+                        'start_register': 40001
+                    }
+                    messages.append((packet, context))
+
+            # MQTT传感器 (每秒)
+            if self._tick % 10 == 0:
+                for zone in ['assembly', 'welding']:
+                    payload = {
+                        'device_id': f'SENSOR-{line_id}-{zone}',
+                        'value': 22.0 + random.gauss(0, 2),
+                        'ts': time.time() * 1000,
+                    }
+                    topic = f"factory/{line_id}/zone{zone}/temperature"
+                    packet = self.generate_mqtt_publish(topic, payload)
+                    context = {'line': line_id, 'zone': zone}
+                    messages.append((packet, context))
+
+            # OPC UA MES (每5秒)
+            if self._tick % 50 == 0:
+                node_map = {
+                    'ns=2;i=1001': {'type': 'production_count', 'unit': 'pieces', 'entity': 'counter'},
+                    'ns=2;i=1002': {'type': 'defect_rate', 'unit': 'percent', 'entity': 'quality'},
+                }
+                for node_id, semantic in node_map.items():
+                    value = random.uniform(90, 100) if 'defect' in semantic['type'] else random.randint(100, 500)
+                    packet = self.generate_opcua_msg(node_id, value)
+                    context = {'line': line_id, 'zone': 'mes', 'node_map': node_map}
+                    messages.append((packet, context))
+
+        return messages
+
+
+# ============================================================
+# 第六部分：性能评估框架
+# ============================================================
+
+class PerformanceEvaluator:
+    """性能评估器 - 收集延迟、吞吐量、资源消耗等指标"""
+
+    def __init__(self):
+        self.latencies: List[float] = []  # ms
+        self.throughput_samples: List[int] = []  # messages/sec
+        self.protocol_detections: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        self._window_count = 0
+        self._window_msgs = 0
+        self._last_window_time = time.time()
+
+    def record_latency(self, start_time: float, end_time: float):
+        latency_ms = (end_time - start_time) * 1000
+        self.latencies.append(latency_ms)
+
+    def record_detection(self, actual_protocol: str, detected_protocol: str):
+        self.protocol_detections[actual_protocol][detected_protocol] += 1
+
+    def record_message_processed(self):
+        self._window_msgs += 1
+        now = time.time()
+        if now - self._last_window_time >= 1.0:
+            self.throughput_samples.append(self._window_msgs)
+            self._window_msgs = 0
+            self._last_window_time = now
+
+    def get_latency_percentiles(self) -> Dict[str, float]:
+        if not self.latencies:
+            return {}
+        sorted_lat = sorted(self.latencies)
+        n = len(sorted_lat)
+        return {
+            "P50": sorted_lat[int(n * 0.50)],
+            "P95": sorted_lat[int(n * 0.95)],
+            "P99": sorted_lat[int(n * 0.99)],
+            "max": sorted_lat[-1],
+            "mean": statistics.mean(sorted_lat),
+        }
+
+    def get_confusion_matrix(self) -> Dict:
+        return {k: dict(v) for k, v in self.protocol_detections.items()}
+
+    def get_classification_report(self) -> Dict[str, Dict[str, float]]:
+        """计算每个协议的Precision/Recall/F1"""
+        protocols = set()
+        for actual in self.protocol_detections:
+            protocols.add(actual)
+            for detected in self.protocol_detections[actual]:
+                protocols.add(detected)
+
+        report = {}
+        for protocol in protocols:
+            # True Positives
+            tp = self.protocol_detections.get(protocol, {}).get(protocol, 0)
+            # False Positives (其他协议被误识别为此协议)
+            fp = sum(
+                self.protocol_detections.get(other, {}).get(protocol, 0)
+                for other in protocols if other != protocol
+            )
+            # False Negatives (此协议被误识别为其他协议)
+            fn = sum(
+                v for k, v in self.protocol_detections.get(protocol, {}).items()
+                if k != protocol
+            )
+
+            precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+            recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+            f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
+
+            report[protocol] = {
+                "precision": round(precision, 4),
+                "recall": round(recall, 4),
+                "f1_score": round(f1, 4),
+                "support": tp + fn
+            }
+
+        return report
+
+    def get_throughput_stats(self) -> Dict:
+        if not self.throughput_samples:
+            return {}
+        return {
+            "mean_msgs_per_sec": round(statistics.mean(self.throughput_samples), 1),
+            "max_msgs_per_sec": max(self.throughput_samples),
+            "std": round(statistics.stdev(self.throughput_samples), 2) if len(self.throughput_samples) > 1 else 0,
+        }
+
+
+# ============================================================
+# 第七部分：主仿真流程
+# ============================================================
+
+def run_simulation(num_ticks: int = 1000) -> Dict:
+    """运行智能工厂仿真"""
+    logger.info("=" * 60)
+    logger.info("智能工厂多协议融合仿真系统启动")
+    logger.info("=" * 60)
+
+    # 初始化组件
+    registry = ProtocolAdapterRegistry()
+    registry.register(ModbusRTUAdapter())
+    registry.register(MQTTAdapter())
+    registry.register(OPCUAAdapter())
+
+    fusion_engine = EdgeFusionEngine(window_size_ms=500, stride_ms=100)
+    simulator = SmartFactorySimulator(num_lines=3, num_plc_per_line=4)
+    evaluator = PerformanceEvaluator()
+
+    total_processed = 0
+    total_fused = 0
+
+    logger.info(f"已注册协议适配器: {registry.list_adapters()}")
+    logger.info(f"仿真规模: {num_ticks} ticks, 3产线×4PLC")
+    logger.info("-" * 60)
+
+    for tick in range(num_ticks):
+        messages = simulator.generate_tick()
+
+        for raw_bytes, context in messages:
+            start_time = time.time()
+
+            # 协议检测与翻译
+            uir_records = registry.detect_and_adapt(raw_bytes, context)
+
+            end_time = time.time()
+            evaluator.record_latency(start_time, end_time)
+
+            for record in uir_records:
+                fusion_engine.ingest(record)
+                evaluator.record_detection(record.protocol, record.protocol)
+                evaluator.record_message_processed()
+                total_processed += 1
+
+        # 定期执行融合
+        if tick % 5 == 0:
+            fused = fusion_engine.flush_window()
+            total_fused += len(fused)
+
+    # 汇总结果
+    results = {
+        "simulation_params": {
+            "num_ticks": num_ticks,
+            "production_lines": 3,
+            "plc_per_line": 4,
+            "protocols": registry.list_adapters()
+        },
+        "total_messages_processed": total_processed,
+        "total_fused_records": total_fused,
+        "latency_percentiles": evaluator.get_latency_percentiles(),
+        "throughput": evaluator.get_throughput_stats(),
+        "detection_stats": registry.get_stats(),
+        "fusion_stats": fusion_engine.get_stats(),
+        "classification_report": evaluator.get_classification_report(),
+    }
+
+    logger.info("\n" + "=" * 60)
+    logger.info("仿真结果汇总")
+    logger.info("=" * 60)
+    logger.info(json.dumps(results, indent=2, ensure_ascii=False, default=str))
+
+    return results
+
+
+if __name__ == "__main__":
+    results = run_simulation(num_ticks=2000)
+```
+
+### 3.3 伪代码：雾层跨产线协同融合
+
+```
+Algorithm: FogLayerCrossLineFusion
+Input: edge_streams[L1..Ln] (各产线边缘层上送的UIR流)
+Output: global_insights (全局融合洞察)
+
+PROCEDURE CrossLineFusion():
+    // 步骤1：跨产线数据对齐
+    aligned_data ← MultiStreamTemporalAlign(edge_streams, max_skew=200ms)
+    
+    // 步骤2：关联分析——同类型测量跨产线对比
+    FOR EACH measurement_type IN aligned_data.types DO
+        cross_line_values ← CollectAcrossLines(aligned_data, measurement_type)
+        
+        // 异常产线检测(基于MAD鲁棒统计)
+        median ← Median(cross_line_values)
+        mad ← MedianAbsoluteDeviation(cross_line_values)
+        
+        FOR EACH line, value IN cross_line_values DO
+            z_score ← 0.6745 * (value - median) / mad
+            IF |z_score| > 3.0 THEN
+                GenerateAlert(line, measurement_type, "cross_line_anomaly", z_score)
+            END IF
+        END FOR
+    END FOR
+    
+    // 步骤3：强化学习调度优化
+    state ← EncodeState(
+        queue_lengths = [GetQueueLength(L) for L in lines],
+        network_quality = [GetCQI(L) for L in lines],
+        buffer_utilization = [GetBufferUtil(L) for L in lines]
+    )
+    
+    action ← RL_Agent.SelectAction(state)
+    // action = {priority_weights, batch_sizes, upload_intervals}
+    
+    ApplySchedulingPolicy(action)
+    
+    reward ← ComputeReward(
+        throughput = MeasureThroughput(),
+        latency = MeasureP95Latency(),
+        energy = MeasureEnergyConsumption()
+    )
+    
+    RL_Agent.Update(state, action, reward)
+```
+
+---
+
+## 四、重写：§2.7 结果展示（替换原表2.1-2.3）
+
+### 2.7.1 实验一结果：协议识别准确性
+
+**说明：** 以下结果基于Python仿真环境，600条混合协议报文（每协议200条，含10%异常报文）。
+
+**表2.1 协议识别混淆矩阵**
+
+| 实际\预测 | Modbus RTU | MQTT | OPC UA | Unknown |
+|----------|-----------|------|--------|---------|
+| Modbus RTU (200) | **189** | 2 | 1 | 8 |
+| MQTT (200) | 3 | **185** | 4 | 8 |
+| OPC UA (200) | 1 | 3 | **187** | 9 |
+
+注：Unknown列为异常/畸形报文被正确拒识的数量
+
+**表2.2 分协议分类指标**
+
+| 协议 | Precision | Recall | F1-Score | Support |
+|------|-----------|--------|----------|---------|
+| Modbus RTU | 0.979 | 0.945 | 0.962 | 200 |
+| MQTT | 0.974 | 0.925 | 0.949 | 200 |
+| OPC UA | 0.974 | 0.935 | 0.954 | 200 |
+| **加权平均** | **0.976** | **0.935** | **0.955** | **600** |
+
+**分析：** Modbus RTU因帧结构固定（CRC16校验+功能码）识别率最高；MQTT因QoS 0报文缺少Packet ID导致与部分二进制报文特征重叠，Recall相对较低；OPC UA的Binary编码前缀("MSG"/"OPN")提供了较强的区分特征。异常报文（修改CRC、截断载荷等）的拒识率约为 **80%**（160/200异常报文被标记为Unknown或低置信度），仍有改进空间。
+
+**与基线对比：**
+
+| 方法 | Macro-F1 | 异常报文拒识率 |
+|------|----------|------------|
+| 纯规则匹配(基线) | 0.891 | 62% |
+| **本文多特征融合** | **0.955** | **80%** |
+| 提升幅度 | +7.2% | +29.0% |
+
+### 2.7.2 实验二结果：实时性与资源消耗
+
+**说明：** 延迟测量为仿真环境中的算法处理时间，不含物理网络传输延迟。实际部署延迟需叠加网络传输开销。
+
+**表2.3 不同负载下的延迟分布(ms) — 仿真环境**
+
+| 负载(数据点/秒) | P50 | P95 | P99 | Max | 吞吐量(msg/s) |
+|---------------|-----|-----|-----|-----|-------------|
+| 50 | 2.1 | 8.3 | 15.7 | 23.4 | 50 |
+| 100 | 3.8 | 12.1 | 28.3 | 42.1 | 100 |
+| 200 | 7.2 | 23.5 | 47.8 | 68.3 | 198 |
+| 300 | 12.4 | 41.2 | 78.6 | 112.5 | 287 |
+
+**表2.4 分层架构 vs. 单层集中式处理对比**
+
+| 指标 | 单层集中式 | 本文分层架构 | 改善 |
+|------|----------|-----------|------|
+| P95延迟@200pts/s | 52.3ms | 23.5ms | -55.1% |
+| P99延迟@200pts/s | 98.7ms | 47.8ms | -51.6% |
+| CPU占用(边缘节点) | N/A | 35% | 边缘分担 |
+| 内存占用(边缘节点) | N/A | 128MB | 轻量化 |
+| 网络带宽(上行) | 100% | 42% | 边缘融合减少 |
+
+**表2.5 资源消耗(模拟ARM Cortex-A72级边缘设备)**
+
+| 负载 | CPU占用 | 内存占用 | 备注 |
+|------|--------|---------|------|
+| 50 pts/s | 12% | 85 MB | 轻负载 |
+| 100 pts/s | 22% | 102 MB | 常规负载 |
+| 200 pts/s | 35% | 128 MB | 设计负载上限 |
+| 300 pts/s | 58% | 167 MB | 超载，需雾层分流 |
+
+**关键发现：**
+1. 在设计负载（200 pts/s）下，P95延迟为23.5ms，满足工业监测类应用的50ms约束（仿真环境）
+2. 超过300 pts/s时P99延迟超过50ms，需启动雾层分流机制
+3. 边缘融合使上行带宽降低58%，显著减轻雾层/云层压力
+
+### 2.7.3 实验三结果：通用性验证
+
+在系统运行过程中，动态注册BACnet协议适配器：
+
+| 指标 | 值 | 说明 |
+|------|---|------|
+| 适配器注册耗时 | <5ms | 热插拔，无需重启 |
+| 注册后首次识别延迟 | 18ms | 首次无缓存，需全量检测 |
+| 稳态识别延迟 | 3.2ms | 缓存命中后 |
+| 对已有协议识别的影响 | <1% | 几乎无影响 |
+| 融合精度变化 | ±0.3% | 在统计误差范围内 |
+
+---
+
+## 五、重写：§2.8 讨论（新增/替换）
+
+### 2.8.1 仿真结果的工业意义与局限性
+
+**仿真与实际部署的差距分析：**
+
+本实验结果为仿真环境下的算法性能，与实际工业部署存在以下差异，需在后续工作中验证：
+
+| 因素 | 仿真假设 | 实际情况 | 预期影响 |
+|------|---------|---------|---------|
+| 网络延迟 | N(5,2²)ms固定模型 | 突发拥塞、丢包重传 | P99延迟增大2-5倍 |
+| 时钟同步 | NTP±50ms偏移 | PTP精度μs级，NTP精度ms级 | 融合窗口需自适应调整 |
+| 硬件平台 | Python解释执行 | C/Rust嵌入式实现 | 延迟降低5-10倍 |
+| 数据特征 | 均匀分布+高斯噪声 | 非平稳、多模态分布 | 识别准确率可能下降3-5% |
+| 电磁干扰 | 未建模 | RS-485信号畸变 | Modbus CRC校验失败率上升 |
+
+**建议的实际部署路径：**
+1. 第一阶段：将核心算法（协议检测+UIR转换）用Rust重写，部署至ARM边缘网关进行单产线验证
+2. 第二阶段：引入FPGA预处理Modbus RTU的CRC校验和时间戳注入，进一步降低延迟
+3. 第三阶段：对接MES/SCADA系统，验证OPC UA语义映射的工业适用性
+
+### 2.8.2 协议翻译通用性的关键设计决策
+
+本文提出的插件式协议适配器架构，其通用性体现在以下设计层面：
+
+**1. 接口抽象的最小化原则**
+
+`IProtocolAdapter`接口仅要求实现三个方法（detect/parse_to_uir/get_signature），降低了新协议接入门槛。对比主流方案：
+
+| 方案 | 新增协议工作量 | 核心修改 | 热插拔 |
+|------|-------------|---------|-------|
+| Eclipse Ditto | 需实现完整Adapter+Thing Model | 需重启网关 | 否 |
+| Node-RED | 拖拽式配置，但复杂协议需自定义节点 | 低 | 部分 |
+| **本文方案** | 实现3个方法，约100-200行代码 | 无需修改核心 | **是** |
+
+**2. UIR作为协议解耦层的价值**
+
+UIR统一中间表示将"N种协议两两翻译"的O(N²)问题降维为"N种协议各翻译到UIR"的O(N)问题。当协议数量从3增至10时：
+- 传统方式需维护 10×9=90 个翻译规则
+- UIR方式仅需 10 个适配器
+
+**3. 语义映射的行业挑战**
+
+当前实现采用静态映射表（如Modbus寄存器地址→物理量），在实际工业场景中面临：
+- 不同厂商PLC的寄存器分配不统一
+- OPC UA信息模型版本差异
+- 需要引入协议本体(Protocol Ontology)或自动语义发现机制
+
+### 2.8.3 行业关键难点与本文贡献
+
+| 行业难点 | 当前通用方案 | 本文方案 | 优势 |
+|---------|-----------|---------|------|
+| 异构协议互操作 | 专用网关(协议对) | 插件式适配器+UIR | 可扩展性 O(N) vs O(N²) |
+| 实时性保障 | 集中式处理 | 分层架构(边缘预融合) | P95延迟降低55% |
+| 未知协议处理 | 人工分析 | 多特征融合自动识别 | F1=0.955，拒识率80% |
+| 产线扩展 | 停机配置 | 运行时热插拔 | <5ms注册延迟 |
+| 网络带宽优化 | 全量上传 | 边缘融合减量 | 上行带宽降低58% |
+
+### 2.8.4 与IEC 62443工业安全标准的对齐
+
+协议翻译与融合系统在工业环境中需考虑安全性。本文架构中：
+- 边缘层UIR转换过程丢弃原始报文中的敏感控制指令，仅上送监测数据
+- 分层架构天然支持网络分区（Zones & Conduits模型）
+- 协议签名缓存机制可辅助异常报文检测（入侵检测辅助功能）
+
+后续工作可在UIR中增加安全标签（Security Label），实现数据流的分级保护。
+
+---
+
+## 六、创新点总结（修改建议）
+
+建议将原§2.8创新点修改为：
+
+1. **插件式协议适配器架构**：提出基于`IProtocolAdapter`接口的可扩展协议翻译框架，支持运行时热插拔，将多协议接入复杂度从O(N²)降至O(N)
+2. **统一中间表示(UIR)**：设计包含语义标签、质量码和优先级的标准化中间格式，实现协议翻译与融合逻辑的彻底解耦
+3. **分层融合架构**：提出"设备-边缘-雾-云"四层架构，边缘层实时融合使P95延迟降低55%，上行带宽降低58%
+4. **多特征融合协议识别**：结合Shannon熵、字节频率分布和结构特征的协议自动识别方法，F1-score达0.955
+5. **置信度加权冲突消解**：基于时间新鲜度和数据质量码的自适应融合权重分配，解决多源数据冲突问题
+
+---
+
+## 附：代码结构说明
+
+| 模块 | 类/函数 | 职责 | 代码行数 |
+|------|---------|------|---------|
+| UIR定义 | `UIRRecord`, `Priority`, `QualityCode` | 统一中间表示 | ~50 |
+| 适配器接口 | `IProtocolAdapter` | 协议适配抽象接口 | ~20 |
+| Modbus适配器 | `ModbusRTUAdapter` | Modbus RTU解析+CRC校验 | ~80 |
+| MQTT适配器 | `MQTTAdapter` | MQTT PUBLISH解析+主题映射 | ~90 |
+| OPC UA适配器 | `OPCUAAdapter` | OPC UA Binary解析 | ~60 |
+| 适配器注册表 | `ProtocolAdapterRegistry` | 热插拔管理+签名缓存 | ~60 |
+| 融合引擎 | `EdgeFusionEngine` | 时间窗融合+冲突消解 | ~80 |
+| 仿真器 | `SmartFactorySimulator` | 多协议报文生成 | ~100 |
+| 评估器 | `PerformanceEvaluator` | 延迟/F1/吞吐量统计 | ~80 |
+| 主流程 | `run_simulation()` | 仿真编排 | ~60 |
+
+> 全部代码约 **680行Python**，可直接运行 `python smart_factory_fusion.py` 进行仿真验证。
+
+```
+
+---
+
+## 10. How to use this snapshot
+
+1. **Diff baseline** — when modifying any file above, compare the new version
+   against the block here to confirm intentional changes.
+2. **Merge guide** — when integrating files from another repo (e.g. an
+   external simulation backend, Supabase schema, or alternate dashboard),
+   keep the elements documented here unless the merge explicitly replaces
+   them, and re-run the snapshot afterward.
+3. **Regenerate** — ask Lovable to "refresh old_gui_backend_file.md" after a
+   significant merge to lock in the next baseline.
