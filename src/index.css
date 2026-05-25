@@ -39,6 +39,12 @@
     --warn: 38 95% 60%;
     --danger: 0 84% 65%;
 
+    /* Industrial accent palette (dashboard) */
+    --industrial-blue: 200 90% 60%;
+    --industrial-green: 145 65% 52%;
+    --industrial-amber: 38 95% 60%;
+    --industrial-red: 0 84% 65%;
+
     --destructive: 0 84% 60%;
     --destructive-foreground: 150 20% 95%;
 

@@ -30,6 +30,12 @@ export default {
         },
         warn: "hsl(var(--warn))",
         danger: "hsl(var(--danger))",
+        industrial: {
+          blue: "hsl(var(--industrial-blue))",
+          green: "hsl(var(--industrial-green))",
+          amber: "hsl(var(--industrial-amber))",
+          red: "hsl(var(--industrial-red))",
+        },
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",

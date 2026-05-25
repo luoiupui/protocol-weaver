@@ -21,6 +21,12 @@ export const Nav = () => {
               {l}
             </a>
           ))}
+          <a
+            href="/dashboard"
+            className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Dashboard
+          </a>
         </nav>
         <div className="flex items-center gap-3">
           <span className="chip chip-live hidden sm:inline-flex">
